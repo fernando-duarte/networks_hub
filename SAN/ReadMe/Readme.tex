@@ -1,0 +1,178 @@
+%% LyX 2.2.2 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+\usepackage{array}
+\usepackage{longtable}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\usepackage{lscape}
+
+\makeatother
+
+\usepackage{babel}
+\begin{document}
+
+\title{Network Contagion NVI Computation Readme}
+
+\maketitle
+This document is meant to provide important additional information
+about the files and programs contained san git repository for Collin
+and Fernando's NVI project. The portion of this project that uses
+Matlab simulations resides on the RAN, and has its own separate readme
+file. 
+
+\section*{Updating the data}
+
+The Stata do file NtwkCntagn.do will call nearly ever script that
+needs to be run to completely update the data - and every script that
+needs to be run every time any data is updated. What follows is a
+step-by-step instruction of how to properly update the data using
+the NtwkCntagn.do file. 
+
+\subsection*{If you're doing this for the first time}
+\begin{enumerate}
+\item Clone the git bare repository on the san at /san/RDS/Work/cmf/b1cdj02/Fernando/Network\_Contagion.git
+into some other san location of your choice. 
+\item Sign up for a WRDS account.
+\item Create a .pgpass file in your home directory of the WRDS cloud server
+at wrds-cloud.wharton.upenn.edu.
+\item Change the WRDS\_meta.py and batch\_pull.sh to match your WRDS username/password
+and your own WRDS cloud directory structure. 
+\item Make sure you have access to the KMV default probability database.
+Email the research library to request access.
+\item Update RawY9C.stcmd to path to your new directory.
+\end{enumerate}
+
+\subsection*{Step-By-Step}
+
+Unless otherwise indicated, these are all done within the NtwkCntagn.do
+file.
+\begin{enumerate}
+\item If you haven't done it yet this quarter, run ffunds.do in Stata locally
+on your bank machine.
+\item If you're doing a full update of everything set the global wipe\_temp
+to 1. (Would not recommend doing this on the first run - makes code run for ~2hours rather than ~15minutes)
+\item Change the name of this runthrough's log file by changing global runthrough
+tag.
+\item Decide whether to change any of the NVI settings (globals gamma\_benchmark,
+gammas, delta\_fixed, snapshot\_date, bank\_sample)
+\item If you're extending the endpoint of the series, change global charts\_end.
+\item If you're updating permco\_cusip.csv, and you have already updated
+WRDS\_meta.py and batch\_pull.sh with your account info, set changed\_WRDS\_files
+to 1
+\item If you're only outputting simulation data to use on the RAN, change
+global output\_simulation\_data to 1. This will skip running most
+scripts in the directory, so make sure you've run the do file with
+output\_simulation\_data = 0 first, to update things.
+\item Run NtwkCntagn.do! 
+\end{enumerate}
+
+\subsection*{Some Things to Do Occassionally}
+\begin{enumerate}
+\item See if FI has a new RSSID-Permco match posted online. If it does,
+change entity\_permco\_date accordingly. (Note that Sean Hundtofte, used to be the economist in charge of this data and it is unclear when someone will update it again)
+\item See if there's a new version of Moody's KMV available. Could email
+the Research Library, or poke around the data dictionary. If there is, we'll have to decide whether to switch to the new version
+(can be quite different). 
+\item If you're extending the end of the series, you'll have 
+to change Analysis\_Y9C to deal with any variable changes. This is
+a major task. If we ever decide to extend the series, I would suggest
+checking with FI to see whether there's some way to overhaul the code
+in Analysis\_Y9C. FI's reg\_data\_nc dataset qbhc\_nc\_clean.dta in
+theory does many of the same things we do, and would be maintained
+by the FI reg\_data RA (who has better knowledge of everything than
+we do). However, we would need to put some work into making sure things 
+would be consistent between the two. This would be a time-consuming 
+task. FI's make\_clean program is very, very long. If you decide to go the route
+of updating  Analysis\_Y9C using the unprocessed data,
+compairing the make\_clean dataset to Analysis\_Y9C in addition to using 
+MDRM should expidite the update process
+\item If you're extending the end of the series beyond 2016Q4, you'll also
+need new a few other data files which must be updated manually:
+\begin{enumerate}
+\item input/rssd\_hh\_match\_all. dta \textendash{} BHC parent structure.
+Ask the reg\_data FI RA for it (nicely).
+\item SIFMA aggregate dealer data. Ask Fernando about this - got it from
+the Research Library last time.
+\end{enumerate}
+\item Make sure that the matching in Match\_RSSID\_MKMVID is going okay.
+I would periodically check to be sure that most of the big banks (e.g.
+the ones in the bank\_sample global) aren't being dropped during the
+sample. You could plot the KMV default probabiliy of those KMVIDs
+and make sure there aren't any strange breaks.
+\end{enumerate}
+
+\section*{Directory of Scripts}
+
+\begin{longtable}[l]{l|l|l|>{\raggedright}p{8cm}|}
+File Name & Language & Where to run & Description\tabularnewline
+\hline 
+\endhead
+NtwkCntagn.do & Stata & San cluster & Main script for updating data and producing charts for paper. Sets
+global for use in other programs.\tabularnewline
+\hline 
+ffunds.do & Stata & Locally & Pulls flow of funds data from haver (hence must be run locally) and
+compiles balance sheet info on aggregate sector nodes. Run about once
+a quarter.\tabularnewline
+\hline 
+rssd\_hh\_gen & Stata & San cluster & Generates input/rssd\_hh\_match\_all. dta. Completely regenerates the file
+and therefore is rather inefficient. Run overnight, independently from the other code.\tabularnewline
+\hline 
+Update\_Data.do & Stata & San cluster & Primary script to update data. Performs ODBC data loads and executes
+WRDS\_meta.py, if needed.\tabularnewline
+\hline 
+WRDS\_meta.py & Python & San cluster & Interfaces with WRDS cloud server to pull Permco-CUSIP match. IMPORTANT:
+Must be customized with individual WRDS account info.\tabularnewline
+\hline 
+WRDS\_query.py & Python & WRDS Cloud & Helper file to execute WRDS cloud batch job for Permco-CUSIP match.\tabularnewline
+\hline 
+batch\_pull.sh & Shell & WRDS Cloud & Helper file to execute WRDS cloud batch job for Permco-CUSIP match.\tabularnewline
+\hline 
+Match\_RSSID\_MKMVID.do & Stata & San cluster & Matches BHC FR-Y9C RSSID numbers to corresponding MKMVID in KMV default
+probability database (match goes RSSID \textendash{} Permco \textendash{}
+CUSIP \textendash{} MKMVID). Will pull FI's permco-CUSIP link from
+web, to fill in gaps from WRDS pull.\tabularnewline
+\hline 
+CallDeposits.do & Stata & San cluster & Compile data on each BHC's amount of FDIC-insured deposits. This will
+be matched with FR-Y9C data.\tabularnewline
+\hline 
+drd\_matching.do  & Stata & San cluster & Use Moody's database of firm default events to find bankruptcies of
+firms in our FR-Y9C sample. Bankrupt firms will be excluded from NVI.\tabularnewline
+\hline 
+Analysis\_Y9C.do & Stata & San cluster & Clean Raw KMV default probability data, process Fr-Y9C data to produce
+\%in/\%out numbers for each BHC.\tabularnewline
+\hline 
+compile\_agg\_sector.do  & Stata & San cluster & Create data on aggregate sector nodes to include in NVI - particularly
+the sector aggregate probability of default\tabularnewline
+\hline 
+Model\_series\_processing & Stata & San cluster & Take in processed data to produce fields in interest from Glasserman
+- like the NVI, contagion index, and robustness exercises on the two.\tabularnewline
+\hline 
+Plots\_Paper.do  & Stata & San cluster & Produce tables and figures for use in paper\tabularnewline
+\hline 
+Plots\_Appendix.do & Stata & San cluster & Archive of some old scripts for producing past figures and tables.\tabularnewline
+\hline 
+process\_FOCUS.py & Python & San cluster & Process SIFMA files in input/ produce data on Top 1-10, 11-25 dealers
+that can be used to produce aggregate sector nodes.\tabularnewline
+\hline 
+RawY9C.stcmd & Stattransfer & San cluster & Convert sas7bdat file of non-classified FR-Y9C data from FI directory
+into a workable stata format.\tabularnewline
+\hline 
+format\_sim\_data.mat & Matlab & Locally & Convert excel file of simulation-ready NVI data into matlab database,
+for use in RAN matlab simulations.\tabularnewline
+\hline 
+sumary\_stats.do  & Stata & San cluster & Produce summary statistics tables of balance sheet breakdowns, for
+use in paper.\tabularnewline
+\hline 
+\end{longtable}
+\end{document}

@@ -1,0 +1,9 @@
+algorithm 1
+bar_directinterval 10
+bar_murule 5
+bar_feasible 1
+bar_penaltycons 1
+bar_switchrule 1
+linsolver 2
+tuner 0
+tuner_outsub 0

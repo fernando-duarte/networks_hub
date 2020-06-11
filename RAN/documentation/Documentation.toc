@@ -1,0 +1,16 @@
+\contentsline {section}{\numberline {1}Background}{2}{section.1}
+\contentsline {subsection}{\numberline {1.1}Relevant Definitions and Formulas}{2}{subsection.1.1}
+\contentsline {subsection}{\numberline {1.2}Code Summary}{2}{subsection.1.2}
+\contentsline {subsubsection}{\numberline {1.2.1}run\_simulations\_TESTS.m}{2}{subsubsection.1.2.1}
+\contentsline {subsubsection}{\numberline {1.2.2}knitro\_helper.m}{3}{subsubsection.1.2.2}
+\contentsline {subsubsection}{\numberline {1.2.3}simulation\_ratio.m}{3}{subsubsection.1.2.3}
+\contentsline {section}{\numberline {2}Detailed Description of run\_simulations.m}{4}{section.2}
+\contentsline {subsection}{\numberline {2.1}Constraints}{4}{subsection.2.1}
+\contentsline {subsubsection}{\numberline {2.1.1}Optimizable Parameters}{4}{subsubsection.2.1.1}
+\contentsline {subsection}{\numberline {2.2}Constraints with Known Inside Assets and Liabilities}{4}{subsection.2.2}
+\contentsline {subsection}{\numberline {2.3}Constraints with Unknown Inside Assets and Liabilities}{5}{subsection.2.3}
+\contentsline {subsection}{\numberline {2.4}Lower and upper bounds}{6}{subsection.2.4}
+\contentsline {section}{\numberline {3}Disaggregating Nodes}{6}{section.3}
+\contentsline {subsection}{\numberline {3.1}Constraints}{6}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Lower and upper bounds}{8}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}Transforming the gradient}{8}{subsection.3.3}

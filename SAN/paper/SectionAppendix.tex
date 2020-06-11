@@ -1,0 +1,121 @@
+What follows is a continuation of the robustness exercises in Section \ref{sec:robustness}, showing how our central Network Vulnerability Index (NVI) measure changes with different empirical decisions. 
+
+\subsection*{Financial Subsectors Included}
+
+Figure \ref{fig:NVI_subsectors} shows how the NVI changes with the addition of each new financial subsector using the approximation procedure outlined in Section \ref{subsec:non_bhc}. The mostbasic version of our measure, which only uses data from the FR-Y9C form (that is, only large Bank Holding Companies) serves as a base sample, to which other subsectors are individually added through the equation \ref{eq:approx} approximation. As FR-Y9C data is used for us to find the maximum liability connectivity $\beta^+$ for the sample, those firms must be included in each of the configurations. Our `other' category is the only sector whose addition into the NVI alters the measure in any substantial way.
+
+\begin{figure}[H] 
+\begin{center}
+\includegraphics[width = \textwidth]{../output/nvi_sample_inclusions.pdf}
+\end{center}
+\caption[]{\textbf{Network Vulnerability Index in Different Subsamples.} This figure shows the NVI where only FR-Y9C firms are included in the network, and then a series of other configurations with other financial subsectors added to the network. The addition of the `other' category, with its moderately large quantity of assets and very high probabilities of default, has the most impact on the NVI.} \label{fig:NVI_subsectors}
+\end{figure}
+
+\subsection*{Moody's EDF Version}
+
+As \citet{kmv_methods} describe in some detail, there were several notable changes made to the Moody's EDF methodology between versions 8 and 9 of the data. A non-exhaustive list include changes to: the maxmium allowable EDF for financial firms, the assumed informational value of financial firms' balance sheets, and a large increase in financial firm defaults with which to inform estimation of the final empirical fitting of the model. While we are convinced that these changes improve the EDF measure's applicability for our purposes, they do mean that the EDFs can look notably different depending on which version is being used. 
+
+Figure \ref{fig:NVI_edf8v9} shows the benchmark NVI (using EDF version 9), as well as an NVI series computed identically save for a switch from EDF version 9 to EDF version 8. When compared to an NVI calculated with version 8, the benchmark NVI increases earlier and more dramatically in the crisis, peaks somewhat higher in 2009, but then is lower from the end of the financial crisis until 2014. Figure \ref{fig:default_prob_edf8v9} shows a subsector breakdown of how  average default probabilities change between the new and old data versions. BHCs, in particular, have very different EDF magnitudes in the peak of the crisis, and most other subsectors show some differences in the timing and duration of crisis EDFs.  
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_edf8vs9.pdf} 
+\end{center}
+\caption[]{\textbf{Network Vulnerability Index with Different Versions of Moody's Expected Default Frequency.} The changes that Moody's Analytics implemented to their Expected Default Frequency (EDF) series between versions 8 and 9 have a material effect on our spillover measure. Particularly, under version 9 the measure rises earlier leading to the 2008 financial crisis, reaches higher magnitudes, then drops more rapidly after the most-severe parts of the crisis have passed.} \label{fig:NVI_edf8v9}
+\end{figure}
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/edf8vs9_probs.pdf} 
+\end{center}
+\caption[]{\textbf{Sector-Wide Asset-Weighted Default Probabilities with Different Versions of Moody's Expected Default Frequency.} Different versions of Moody's Analytics' Expected Default Frequency series suggest somewhat different default probability dynamics around the Financial Crisis. For certain types of firms, the new version gives much higher probabilities in the peak of the crisis. For other firm types, general magnitudes remain similar, but the timing and duration of high EDF spells change.} \label{fig:default_prob_edf8v9}
+\end{figure}
+
+\subsection*{Balanced vs Unbalanced FR-Y9C Panel}
+
+Throughout 2002-2016, a number of firms enter and exit our FR-Y9C sample. Notable changes include the additions of Morgan Stanley and Goldman Sachs during the financial crisis, the departure of Metlife from the sample in 2012, and the temporary inclusion of American International Group in 2013 and 2014. We check whether the path or magnitudes of our NVI change when we restrict ourselves to a balanced panel of firms for the portions of our measure relying on the FR-Y9C data. 
+
+As Figure \ref{fig:NVI_robust_full} illustrates, different balanced panel treatments have noticeable but relatively modest effects on the measure. In one Figure \ref{fig:NVI_robust_full} configuration, we entirely drop any FR-Y9C balance sheet information unless the firm has filed the FR-Y9C for the entirety of our sample period. In the second alternate setup, we use all available FR-Y9C balance sheet information (as in the benchmark case), but we restrict our selection of maximum connectivity $\beta^+$ to those BHCs whose data is available for the entire time series. As Goldman Sachs or Morgan Stanley occupy the position of most-connected firm in the benchmark case after their inclusion in the FR-Y9C sample in 2008, this second change does have a noticeable effect\footnote{Although this configuration is identical to the benchmark setup before 2008, as JP Morgan (which has FR-Y9C data in each quarter) is selected as the most-connected firm in those quarters.}.
+
+Figure \ref{fig:default_prob_full} shows how subsector average default probabilities (which, aside from the maximum connectivity changes described above, are the primary way that a balanced panel can change our measure) change when a balance panel restriction is imposed. Most subsectors show very similar average default probabilities under the benchmark setup and a balanced panel treatment. The major exceptions are securities brokers and dealers, whose average default probability decreases much quicker after the height of the 2008 financial crisis. This shows the the effect outlined above - in a balanced panel setup, the default probabilities and assets of Morgan Stanley and Goldman Sachs are permitted to factor into the subsector average, which has a stabilizing effect on its magnitude. 
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_fullsample.pdf} 
+\end{center}
+\caption[]{\textbf{Network Vulnerability Index with Balanced FR-Y9C Panels.} The red line of the figure shows our network spillover measure when we restrict our FR-Y9C sample to only those firms where data is available for our entire sample period, 2002-Q1 to 2016-Q4. The green line shows the spillover measure when we restrict the firms eligible to have their connectivity chosen as the maximum connectivity for the measure in equation \ref{eq:NVI} to the same balanced panel. Both treatments have noticeable, but relatively modest effects.} \label{fig:NVI_robust_full}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/full_vs_benchmark_probs.pdf}
+\end{center}
+\caption[]{\textbf{Sector-Wide Asset-Weighted Default Probabilities with Balanced FR-Y9C Panels.} The subsector with the largest default probability change under a balanced panel treatment are security brokers and dealers. This happens because a balanced panel allows several large broker dealers who became BHCs during the Financial Crisis to remain in the subsector sample after 2008.} \label{fig:default_prob_full}
+\end{figure}
+
+\subsection*{High, Fixed Default Probability}
+
+Next we show the behavior of our NVI when we assume crisis-like default conditions in every quarter of the sample - fixing default probabilities for all firms (in the FR-Y9C and in approximated subsector nodes) at 6\% - which is close to the maximum average default probability in the BHC subsample. Figure \ref{fig:nvi_delta_fix} shows that the NVI remains relatively high throughout the entirety of the sample when this restriciton is imposed. This shows that, while some variation in the NVI comes from connectivity dynamics reflected through $\beta^+$, that majority of variation over time comes from the credit risk of firms. 
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/nvi_deltafixed.pdf}
+\end{center}
+\caption[]{\textbf{Network Vulernability Index Under a Fixed and High Default Probability of 6\%.} The red line above shows the NVI when we assume that all firms in the network have a constant default probability of 6\%. This shows that most time variation in the measure is driven by firm credit risk dynamics. As the NVI becomes linear in default probabilities when they are uniform across firms, the second line can be scaled to represent the NVI at any possible fixed default probability.}\label{fig:nvi_delta_fix}
+\end{figure}
+
+\section{Appendix B: Subsector Firm Sample} \label{sec:appendixb}
+
+As Section \ref{subsec:non_bhc} describes, we use our Expected Default Frequency database from Moody's Analytics to compute an asset-weighted average probability of default for those firms where firm-level balance sheet data is less readily-accessible. \Cref{tab:sample_dealers,tab:sample_other,tab:sample_insurance,tab:sample_reit} show the asset weightings assigned to firms in each included subsector for 2016-Q4, that last period in our sample. For display purposes, any firms assigned less than a 1\% weighting are not included in the table, although each table's final line shows what portion of total weights are assigned to all such firms. Note that these samples exclude any firms whose data is already included in our FR-Y9C sample (note the absence of Goldman Sachs or Morgan Stanley in the sample for security brokers and dealers, for instance).
+
+\begin{table} [H]\centering
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\input{../output/dealers}
+\caption[]{\textbf{Asset Weighting in Average Default Probabilities for Securities Brokers and Dealers, 2016-Q4.} Note that any firms with less than a 1\% weighting are not displayed.}\label{tab:sample_dealers}
+\end{table}
+
+%As \Cref{fig:coverage} showed, the coverage of the broker dealer sample represented in \Cref{tab:sample_dealers} drops precipitously in 2009, at the height of the financial crisis. \Cref{fig:dealer_coverage_details} below provides additional information on the causes of this coverage drop. Specifically, the entrance of Goldman Sachs and Morgan Stanley into the FR-Y9C sample and the acquisition of Merrill Lynch by Bank of America both combine to severely reduce the quantity of broker dealer assets that are not already include in the FR-Y9C. Accordingly, the quantity of assets assigned to the approximated brokder dealer subsector node in the NVI (shown in the series labeled `Dealer Assets, Outside FR-Y9C' series in \Cref{fig:dealer_coverage_details}) decreases at this time as well, which corresponds to a sharp decrease in the weight given to these firms in the final NVI. 
+
+%We do not believe that this drop in coverage for broker dealers is cause for concern in the final NVI. The shift of firms from the approximated subsector node sample to the FR-Y9C sample, which \Cref{fig:dealer_coverage_details} shows explains the drop, represents an increase in the data availability for firms in this sector, not a decrease. Additionally, any reduction in the accuracy of our the average subsector default frequency with the departure of these firms should become unimportant in the final NVI with the simultaneous decrease in sector weight (arising from a decrease in total assets assigned to the approximated node).
+
+%\begin{figure}[H]
+%\begin{center}
+%\includegraphics[width = \textwidth]{../output/dealer_coverage_details.pdf}
+%\end{center}
+%\caption[]{\textbf{Reasons for Dealer Coverage Drop During and After Financial Crisis.} The drop in dealer coverage during and after the crisis is due to the acquisition of several broker-dealer firms by bank holdings companies or, in the case of Goldman Sachs and Morgan Stanley, a transition into our FR-Y9C sample (which assets in the Financial Accounts of the United States do not reflect). The low `coverage' of broker-dealers later in the sample is not a result of assets being excluded from a sample - but rather a shift in data sources.}\label{fig:dealer_coverage_details}
+%\end{figure}
+
+\begin{table} [H]\centering
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\input{../output/insurance}
+\caption[]{\textbf{Asset Weighting in Average Default Probabilities for Insurance Companies, 2016-Q4.} Note that any firms with less than a 1\% weighting are not displayed.}\label{tab:sample_insurance}
+\end{table}
+
+\begin{table} [H]\centering
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\input{../output/reit}
+\caption[]{\textbf{Asset Weighting in Average Default Probabilities for Real Estate Investment Trusts, 2016-Q4.} Note that any firms with less than a 1\% weighting are not displayed.}\label{tab:sample_reit}
+\end{table}
+
+\begin{table} [H]\centering
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\input{../output/other}
+\caption[]{\textbf{Asset Weighting in Average Default Probabilities for Other Financial Firms, 2016-Q4.} Note that any firms with less than a 1\% weighting are not displayed.}\label{tab:sample_other}
+\end{table}
+
+\begin{table} [H]\centering
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\input{../output/dealers_top10}
+\caption[]{\textbf{Asset Weighting in Average Default Probabilities for Top 10 Securities Brokers and Dealers, 2016-Q4.}}\label{tab:sample_dealers}
+\end{table}
+
+\begin{table} [H]\centering
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\input{../output/dealers_top25}
+\caption[]{\textbf{Asset Weighting in Average Default Probabilities for Top 11-25 Securities Brokers and Dealers, 2016-Q4.}}\label{tab:sample_dealers}
+\end{table}
+
+\section{Appendix C: Balance Sheet Asset and Liability Classifications} \label{sec:appendixc}
+
+\input{../output/master_table_assets_wffunds_inserts}

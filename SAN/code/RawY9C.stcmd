@@ -1,0 +1,20 @@
+// This Stat/Transfer command file was automatically generated on July 2, 2018 at 12:16 PM (v13.1.474.0412, Linux 2.6.32-696.30.1.el6.x86_64 x86_64)
+//ENCODING UTF-8
+set numeric-names      n
+set log-level          e
+set in-encoding        system
+set out-encoding       system
+set enc-errors         sub
+set enc-sub-char       _
+set enc-error-limit    100
+set var-case-cs        preserve-mixed
+set preserve-label-sets y
+set preserve-str-widths n
+set preserve-num-widths n
+set read-sas-fmts      n
+set stata-strL-threshold 32
+set write-stata-se     y
+
+copy /san/RDS/Derived/reg_data_nc/fr_y9c/cuv_bhcf_nc.sas7bdat stata /san/RDS/Work/cmf/b1far01/Fernando/Network_Contagion/temp/RawY9C.dta -y
+
+quit

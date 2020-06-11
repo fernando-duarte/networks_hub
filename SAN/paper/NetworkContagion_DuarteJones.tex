@@ -1,0 +1,134 @@
+%2multibyte Version: 5.50.0.2953 CodePage: 1252
+%\input{tcilatex}
+
+
+\documentclass[12pt]{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{makeidx}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{eurosym}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{setspace}
+\usepackage{lscape}
+\usepackage{url}
+\usepackage{rotating}
+\usepackage{color}
+\usepackage{soul}
+\usepackage{natbib}
+\usepackage[font={footnotesize},labelfont={footnotesize},textfont={footnotesize}]{caption}
+\usepackage{caption}
+\usepackage{tikz}
+ \usepackage{subscript}
+ \usepackage{enumerate}
+ \usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{float}
+ \usepackage{booktabs}
+ \usepackage{changepage}
+ \usepackage{cleveref}
+ \usepackage{array}
+ \usepackage{longtable}
+ \usepackage{multirow}
+ \usetikzlibrary{decorations.markings}
+
+\setstretch{1}
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}{Algorithm}
+\newtheorem{axiom}{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}{Claim}
+\newtheorem{sec:conclusion}{sec:conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}{Conjecture}
+\newtheorem{corollary}{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+%\newenvironment{proof}[1][Proof]{\textbf{#1.} }{\  \rule{0.5em}{0.5em}}
+\textwidth15.8cm \textheight22cm \evensidemargin0cm
+\oddsidemargin0cm \topmargin-1cm
+\let \cite=\citeasnoun
+\renewcommand{\floatpagefraction}{1.10}
+%\input{tcilatex}
+\begin{document}
+
+\title{Empirical Network Contagion for US Financial Institutions\thanks{%
+Duarte (fernando.duarte@ny.frb.org) and Jones (collin.jones@ny.frb.org) are with the Federal
+Reserve Bank of New York. The authors thank Rui Yu for outstanding research assitance and Tobias Adrian, Dong Beom Choi, Thomas Eisenbach, Andreas Fuster, Beverly Hirtle, Anna Kovner and James Vickery for helpful comments. The views expressed in this paper are those of the authors
+and do not necessarily represent those of the Federal Reserve Bank of New York, or the Federal Reserve System.}}
+\author{Fernando Duarte \ \ \ \ Collin Jones}
+\date{{\normalsize {This version: \today}}}
+\maketitle
+
+\begin{abstract}
+\noindent We construct an empirical measure of expected network spillovers that arise through default cascades for the US financial system for the period 2002-2016. Compared to existing studies, we include a much larger cross-section of US financial firms that comprise all bank holding companies, all broker-dealers and all insurance companies, and consider their entire empirical balance sheet exposures instead of relying on simulations or on exposures arising just through one specific market (like the Fed Funds market) or one specific financial instrument (like credit default swaps). We find negligible expected spillovers from 2002 to 2007 and from 2013 to 2016. However, between 2008 and 2012, we find that default spillovers can amplify expected losses by up to 25\%, a significantly higher estimate than previously found in the literature.
+\vspace*{.5cm}
+
+\noindent \textbf{Keywords:} Systemic risk, Contagion, Financial network
+
+\noindent \textbf{JEL classification:} D85, G21\newline
+\end{abstract}
+
+\begin{center}
+%%{[PRELIMINARY]}
+\end{center}
+
+\vspace{0.5cm}
+
+\vspace{0.5cm}
+
+%\tableofcontents
+
+\thispagestyle{empty} \newpage \setcounter{page}{1} \onehalfspacing
+
+\section{Introduction}
+\label{sec:intro}
+
+\input{SectionIntro}
+
+\section{Network Model}
+
+\label{sec:model}
+
+\input{SectionModel}
+
+\section{Data and Empirical Methodology}
+\label{sec:data}
+
+\input{SectionData}
+
+\section{Results}
+\label{sec:results}
+
+\input{SectionResults}
+
+\section{Robustness}
+\label{sec:robustness}
+
+\input{SectionRobustness}
+
+\section{Conclusion}
+
+\input{SectionConclusion}
+
+\bigskip \bigskip \bigskip \singlespacing 
+\vspace{-.3in} {\footnotesize 
+\bibliographystyle{econometrica}
+\bibliography{SectionReferences}
+}
+
+\section{Appendix A: Additional Robustness Exercises} \label{sec:appendixa}
+\input{SectionAppendix}
+\end{document}

@@ -1,0 +1,85 @@
+We next test the robustness of our results to changes in a number of data treatment procedures and model assumptions.
+
+\subsection{Bankruptcy Costs}
+
+A common choice in the financial contagion literature is to impose additional costs of bankruptcy on firms that default. These additional costs are frequently cited as a potential factor for contagion risk. A necessarily incomplete list of the reasons for such costs includes: Delay of payments, inefficient liquidations, penalties, funding shortages, downgrades on debt instruments, runs, legal fees, administrative expenses and, more generally, disruptions to the provision of financial intermediation services necessary to the real economy\footnote{For a good example on these and other costs of failure, see the study of Lehman Brothers' case by \citet{fleming2014failure}.}. The \citet{eisenberg2001systemic} framework can be easily modified to include these sorts of costs, and \citet{glasserman2015likely} find a new upper bound on relative network spillovers in their presence. This new upper bound is
+\begin{equation}
+B=1+\frac{1}{(1-\left( 1+\gamma \right) \beta ^{+})}\frac{\sum {\delta
+_{i}c_{i}}}{\sum {c_{i}}},
+\end{equation}
+
+\noindent where $\gamma \in [0, 1]$ are imposed when a firm defaults by reducing asset values by a share $\gamma$ of payment shortfalls.. 
+
+As \citet{glassermanSurvey2016} note, estimating $\gamma$ empirically can be quite challenging. To test whether different bankruptcy costs change the central story of our NVI, Figure \ref{fig:robustness_gamma} plots the new upper bound in the presence bankruptcy costs of different magnitudes.
+
+The dynamics of the NVI are the same under reasonable levels of bankruptcy costs. The level of the NVI under different $\gamma$ specifications also remains similar for every $\gamma$ except for the largest bankruptcy cost we consider, $\gamma=30\%$. Even in the case of $\gamma=30\%$, the conclusions to be drawn from the measure are much the same as those from our benchmark setting. That is, when the upper-bound is small enough to draw meaningful conclusions, it is small in both setups. In times when the benchmark NVI is too large to make definitive statements about the relative magnitude of contagion losses, it is similarly too-large in both configurations. 
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_gamma.pdf}
+\end{center}
+\caption[]{\textbf{Network Vulnerability with Additional Costs of Bankruptcy.} Adding bankruptcy costs to the model increases the vulnerability of the system to network spillovers, but does not change the qualitative nature of our results.} \label{fig:robustness_gamma}
+\end{figure}
+
+\subsection{FR-Y9C Balance Sheet Classifications}
+
+Whenever a more absolute classification seemed inappropriate for a particular line item, we allocated 50\% of the line item as inside and 50\% as outside the financial system. Figure \ref{fig:robustness_allocations} shows how different allocations of these more uncertain balance sheet items as inside or outside the financial system change the NVI. The allocation of these fields can have a material effect on the magnitude of the series, particularly around the financial crisis. However, much as before, the conclusions to be drawn from the NVI, considering its nature as an upper-bound, are qualitatively the same across different allocation schemes of these assets and liabilities.  
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_perc_unc.pdf}
+\end{center}
+\caption[]{\textbf{Network Vulnerability Under Different Classifications of Hard-To-Classify and Liabilities.} The lines of this figure show the upper bound on expected network spillovers when we make different classification decisions for balance sheet items that are neither clearly inside nor outside the network. While different schemes can alter the magnitude of the measure, especially in the financial crisis, the measure remains qualitatively similar.} \label{fig:robustness_allocations}
+\end{figure}
+
+\subsection{$\beta^+$ Selection Sample}
+
+We are also interested in learning how sensitive our NVI measure is to different selections of firm liability connectivity $\beta$ to use as the maximum connectivity $\beta^+$ in the NVI. In the benchmark setup, $\beta^+$ is chosen as the largest $\beta^+$ among the top 20 BHCs by assets at any point in the sample.
+
+Figure \ref{fig:NVI_robust_betanum} assesses the importance of this selection by applying different criteria for choosing a specific firm's $\beta$ as $\beta^+$ for the quarter. Panel (a) shows the NVI under these different criteria and Panel (b) shows the maximum liability connectivity $\beta^+$ chosen under each scheme.
+
+In two of the test cases, we simply select $\beta^+$ as the second or third highest connectvitiy among large BHCs, instead of the highest. This can have a large impact on the size of the connectivity value $\beta^+$ in the measure, but ultimately any magnitude shifts are insufficient to cause any notable differences in the NVI itself. 
+
+Another potential selection method would be to select $\beta^+$ as the largest financial connectivity among all firms in a given quarter, regardless of the size of that firm. This setup could lend the measure more theoretical validity, as $\beta^+$ in the model of \citet{glasserman2015likely} is in fact the largest of \textit{any} node in the system. Figure \ref{fig:NVI_robust_betanum} shows that this can have a dramatic impact on both $\beta^+$ and the NVI. Panel (b) of Figure \ref{fig:NVI_robust_betanum} shows why this is the case. Early in the sample, the Investors Financial Services Corporation (ticker IFIN) has a very high $\beta$, consistently higher than 0.95. Following IFIN's acquisition by State Street in 2007, the full-sample $\beta^+$ drops substantially, coming much close to that chosen from the largest BHCs. Panel (a) of Figure \ref{fig:NVI_robust_betanum} shows that, at this same time, the NVI calculated from this unrestricted $\beta^+$ becomes more similar in magnitude to that from the benchmark setup. Even though it is more theoretically appealing to use the largest $\beta$ across all firms in our sample, we judge the NVI to be more useful as an empirical gauge of network spillovers when it is not driven by the balance sheet composition of a single small firm\footnote{However, the fact that IFIN has the largest $\beta$ in the sample is unsurprising, and serves as a reassuring check on the validity of our inside/outside liability classifications. IFIN specifically provided asset management services to US financial services industry, making it the perfect candidate for large financial connectivity.}.
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_beta_selection.pdf} 
+\end{center}
+\caption[]{\textbf{Network Vulnerability and Maximum Connectivity, Different Selection Criteria.} Panel (a) shows the upper bound on network spillover effects when we make different selection decisions for which BHC to have its liabilitity connectivity counted as the largest liability connectivity for the system. When we limit ourselves to the top BHCs by assets, it does not materially affect the NVI if we select the highest connectivity, second highest, or third highest. If we relax our restriction of high-asset BHCs, however, and allow any firm in the FR-Y9C to have the highest connectivity, then the movements of the NVI become unpredictable. Panel (b) shows the level of connectivity chosen as the highest under each of those four selection criteria. Selecting the highest connectivity from any FR-Y9C firm allows several small, highly connected firms to have an undue influence on this value.} \label{fig:NVI_robust_betanum}
+\end{figure}
+
+\subsection{Comparison with FR Y-15 Data}
+
+Beginning in 2012, the Board of Governors of the Federal Reserve System began requiring large US BHCs to file an FR-Y15 Systemic Risk Report, which reports (among other indicators) certain variables relating to total intrafinancial assets and liabilities\footnote{Available at time of publication at https://www.ffiec.gov/nicpubweb/nicweb/Y15SnapShot.aspx.}. The low yearly frequency, short sample, and narrower panel of firms available with this data make this form less appealing as a main source of data. However, information from the form is still useful as a cross-check, especially given that the form line items more closely correlate to the model's variables. The following figures incorporate these fields into our NVI measure in a variety of different ways. 
+
+First, Figure \ref{fig:nvi_y15} uses FR-Y15 data by the most direct method, substituting applicable FR-Y15 fields into the NVI equation \ref{eq:NVI}. One setup in Figure \ref{fig:nvi_y15} uses the FR-Y15 value for intrafinancial liabilities to construct liability connectivity $\beta$ for firms who file an FR-Y15, then subsequently chooses the maximum of those newly-generated $\beta$ values as the maximum connectivity $\beta^+$ for the NVI. Another of Figure \ref{fig:nvi_y15}'s configurations directly uses FR-Y15 data for all balance-sheet items in the NVI's computation. To do this, we first limit our sample to those firms who have filed an FR-Y15 at some point from 2012-2016 (this limits our BHC sample, and completely removes our non-BHC appromixated subsector nodes). With our panel reduced in this way, we are able to both use the FR-Y15 for maximum connectivity $\beta^+$ as before, and use intrafinancial assets to calculate $c_i$ for each firm in the sample. To differentiate the effects of the FR-Y15 data from those of a panel size reduction, we also plot a version of the NVI computed with our standard data sources, but that limits its sample to those same firms.
+
+While these new data sources cause changes that are moderately-sized in relative terms, they only serve to shift downward our upper bound measure, in a period when that upper bound was already quite low. To that extent, the FR-Y15 data does not change the conclusions of the NVI as an upper bound in these periods - namely, that the potential for network spillover losses from direct counterparty exposures is very small from 2013-2016. 
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_nvi_y15.pdf}
+\end{center}
+\caption[]{\textbf{Network Vulnerability Calculated with FR-Y15 Data.} The green line uses FR-Y15 data, when available, to calculate the maximum liability connectivity $\beta^+$ that enters the NVI. The red line limits the panel of firms in the NVI to the FR-Y15 sample, then uses the FR-Y15 for all relevant balance sheet fields. Finally, the orange line calculates the NVI using our standard data sources, but only for the panel or firms with FR-Y15 data. This different data source yields fairly different NVI results in magnitude, but the conclusions to be drawn from that measure in this period remain unchanged.}\label{fig:nvi_y15}
+\end{figure}
+
+A second way to use FR-Y15 data is to use the reported fields for intrafinancial deposit liabilities to help inform our classification of deposit liabilities. Figure \ref{fig:nvi_custodian} shows the NVI with this change. Specifically, we find a firm-specific average percentage of non-insured deposits inside the financial system from the FR-Y15 sample, then assume that that same percentage of non-insured deposits are inside the system for the entire sample. This allows us to recalculate $\beta$ for firms that filed an FR-Y15 from 2013-2016 (which roughly includes the same firms from which we select $\beta^+$ in the benchmark setup), and select a new $\beta^+$ for the NVI. Figure \ref{fig:nvi_custodian} also includes a much-coarser robustness check that changes the quantity of non-insured domestic deposits classified as inside the system, from 100\% in the benchmark, to 20\%.
+
+While these adjustments have some impact on the measure - particularly in mid-to-late 2008 - they certainly do not change the nature of any of our conclusions. We view this as reassuring that our 100\% inside-system assignment for non-insured deposits, while unrealistic for most firms, has little impact on our actual upper-bound.
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_y15_depos.pdf}
+\end{center}
+\caption[]{\textbf{Network Vulnerability with Alternate Percentages of Uninsured Deposits Inside the Network.} The red line above shows the NVI when onyl 20\% of uninsured domestic deposits are classified as `inside' the financial system, for the purpose of calculating liability connectivity (as opposed to 100\% in the Benchmark setup). The green line uses FR-Y15 data to construct an average percentage of non-insured deposits inside the system for those firms who file the FR-Y15. That average percentage from the FR-Y15 sample period is then applied for that firm uniformly across each quarter. Neither of these configurations alter the NVI in any substantial way.}\label{fig:nvi_custodian}
+\end{figure}
+
+Lastly, we wish to see whether any of the off-balance sheet fields on the FR-Y15 can, when combined with our FR-Y9C classifications, alter our NVI in any way. Particularly, the fields allowing firms to record the magnitudes of any undrawn lines of credit with financial institutions and the magnitude of any potential future exposure on over-the-counter derivatives are potentially practically-meaningful assets or liabilities for a firm, but would not appear on the FR-Y9C balance sheet. Figure \ref{fig:nvi_offbalance} incorporates information from the FR-Y15 on these quantities into the measure in a similar way to Figure \ref{fig:nvi_custodian}. We limit our NVI sample to FR-Y15 filing firms, then estimate a firm-specific average percentage of total firm assets or liabilities added by including these fields on the balance sheet. Finally, we add extra inside assets or liabilities to that firm in each quarter using those percentages and the firm's total assets or liabilities at the time. Figure \ref{fig:nvi_offbalance} shows that, while these values can change the NVI (primarily by increasing liability connectivity) the connectivity increases implied by their magnitudes in 2013-2016 are not sufficient to impact the NVI in any meaningful way.
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width = \textwidth]{../output/robustness_offbalance.pdf}
+\end{center}
+\caption[]{\textbf{Network Vulnerability with Extrapolated Quantities for FR-Y15 Off-Balance Sheet Items.} The green line shows the value of the NVI when limited to FR-Y15 filing firms, and when certain off-balance sheet items from the FR-Y15 are applied to earlier quarters in the sample. This is done by constructing an average percentage of total firm assets or liabilities attributable to those fields, and assuming that same percentage of assets or liabilities should be added as `inside' the financial system throughout the sample. The NVI constructed only from FR-Y15 filing firms (i.e. removing all approximated subsector firms) is included in the red line, for reference. These changes have no discernible impact on the NVI, when compared to the benchmark setup over the same panel of firms.}\label{fig:nvi_offbalance}
+\end{figure}

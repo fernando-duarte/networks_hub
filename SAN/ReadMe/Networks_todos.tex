@@ -1,0 +1,199 @@
+%% LyX 2.2.2 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{babel}
+\begin{document}
+
+\title{Network Contagion To-Dos and Comments}
+
+\author{Collin Jones}
+\maketitle
+
+\section*{To-Dos}
+\begin{itemize}
+\item Read through paper and update anything deprecated (hasn't been done
+in a little while)
+\item Use new FOCUS reports data to refine our dealer nodes (at the very
+least, get specific $\beta$ values for Goldman Sachs and Morgan Stanley,
+to eliminate the need for the aggregate dealer nodes).
+\item Improve the catch-all 'Other' category, or remove it entirely. We're
+convinced that the firms being selected as representative of that
+sector's default probability are not great representations.This will
+change the final NVI values quite a bit, as that category has the
+highest default probabilities now. Could start at flow of funds documentation
+and see where they get their data for some of the sectors we lump
+into 'Other'. 
+\begin{itemize}
+\item One idea that we discussed is to only assign the 'Other' category
+a magnitude of assets equaling the total assets of firms selected
+to fit that category from the KMV dataset. This will prevent us from
+assigning huge numbers of assets to a relatively small sample of firms
+(which is what we currently do). 
+\end{itemize}
+\item Address Joao's comments:
+\begin{itemize}
+\item Do worst case scenario over whole sample (e.g., for each bank, pick
+worst prob of default over sample and assign that prob for the whole
+sample) 
+\item Do not speculate about mortgages becoming riskier as explanation 
+\item Must explain why a simple weighted average of prob of default does
+not tell the whole story \textendash{} otherwise, why do we need the
+whole NVI and all the work? Maybe not even show that graph in main
+text since it invites these questions 
+\item Just like we plot a case with constant delta, can we plot a case where
+the effect of delta moving but nothing else moving is shown? 
+\item The benchmark should be that non-insured deposits are outside the
+network, then do robustness (since most are corporate deposits) 
+\item The small network example is good, keep using those numbers to illustrate
+throughout 
+\item When we define $\delta_{i}$, it is confusing (need to make clearer
+it is just due to shocks) 
+\item When we introduce contagion index, must explain that it is equal to
+dollar amount of intranetwork liabilities; then explain why it is
+increasing in each of the three components (for example, why is the
+contagion index increasing in net worth? That doesn\textquoteright t
+seem to make sense unless you explain high net worth reduces contagion
+through lambda, but given lambda, it increases it due to size, but
+it cancels anyway) 
+\item When we say \textquotedblleft We define a frim\textquoteright s quarterly
+EDF measure to be the average of its daily measures over a given quarter.\textquotedblright ,
+it is confusing since it is not clear if it is quarterly prob of default
+or annual prob of default at quarterly frequency (and why pick annual
+EDF?) 
+\item Maybe acknowledge that NVI does not predict rising vulnerability pre-crisis,
+or compare to how it does with other measures (like CoVaR, srisk)
+{[}{[}Note: When I ran some cross-sectional predictive regressions
+for my fire-sale project and included the contagion index, it did
+really well, we should go back and look at those results{]}{]} 
+\item When we show bank-specific plots, mention that acquiring a financial
+firm does increase outside assets if the acquired firm has outside
+assets 
+\item How much does size matter? Measure seems to be all ratios (beta, NVI,
+etc are ratios). Most systemic risk measures boil down to size, but
+ours does not seem to do so, which is nice if we can document it 
+\item Default is very binary: you either default and haircut liabilities,
+or you don\textquoteright t. In the real world, as prob of default
+increases, there are consequences/changes. Risk goes up. Value of
+liabilities goes down, even without default. Counterparties do not
+roll over debt. By the time you default, a lot of the action may have
+already happened, and the measure also misses all of it. Can we somehow
+incorporate that? Or think about that? {[}{[}Note: can use the glasserman
+\textquotedblleft loss of confidence\textquotedblright{} case?{]}{]} 
+\item What defines who\textquoteright s inside and outside the financial
+network in the model? How much does it matter both theoretically and
+empirically? 
+\item Why do you break down Top 10 and Top 25 broker-dealers in the contribution
+by sector plot (or in the weighted avg of default)? They are all broker
+dealers after all
+\end{itemize}
+\item Simulations
+\begin{itemize}
+\item Decide where this all fits in the paper.
+\item Run and interpret simulation results with different bankruptcy costs.
+\item Run simulations that minimize the different between the NVI and the
+actual ratio of expected losses (as tight as we can get)
+\item Re-derive the gradient for the beta distribution where $\alpha=2$.
+I was having some trouble making this work in closed-form.
+\end{itemize}
+\end{itemize}
+
+\section*{Comments}
+
+What follows are comments and explanations of several of the more-nuanced
+data decisions made in the process of writing the paper, which may
+be difficult to glean solely from looking at the code. I would recommend
+reviewing this section before undertaking any major overhauls of the
+code, to at least see why things are set up their current way.
+\begin{itemize}
+\item The $\beta^{+}$for the benchmark NVI is selected from a sample of
+22 major system nodes - 20 belong to major BHCs in the FR-Y9C sample,
+and 2 are broker-dealer aggregate nodes compile from SIFMA aggregate
+FOCUS report data (Model\_series\_processing.do).
+\item We currently use KMV versions 9 default probability data. Using version
+8 instead causes some substantial differences (Update\_Data.do). 
+\item Matching between the FR-Y9C to the KMV dataset has a number of steps.
+RSSID numbers for BHCs are taken from the FR-Y9C data from FI. An
+RSSID-Permco matching is taken from data posted online by FI. A Permco-CUSIP
+match is pulled from CRSP, which we access through WRDS. The CUSIP
+is provided in the KMV dataset, so this is merged to find the MKMVID
+(Match\_RSSID\_MKMVID.do).
+\item Early in the project, we had a problem where the quantity of uninsured
+deposits estimated in a BHC's commercial bank Call Report filings
+exceeded the value of domestic deposits in the parent BHC's FR-Y9C
+filings. This led to strange negative values of insured Y9C deposits.
+To fix this issue, we now take the estimate of insured deposits from
+the Call Report, then subtract that from the FR-Y9C domestic deposits
+numbers to obtain an estimate for uninsured deposits (CallDeposits.do
+and Analysis\_Y9C.do).
+\item {[}Call Report matching{]}
+\item Analysis\_Y9C.do
+\begin{itemize}
+\item The KMV default probability data comes at a daily frequency, which
+must be aggregated to the quarterly level to use with our balance
+sheet data. We currently use the end-of-quarter value, but have used
+the mean in past iterations. (Analysis\_Y9C.do)
+\item We remove KMV default probability data of firms that have filed for
+bankruptcy, according to Moody's drd database. If a firm in our sample
+files for bankrupcty at any time in our sample, then that firm is
+excluded for the rest of the sample. Bankrupt firms will remain in
+the sample for the quarter in which they file for bankruptcy, but
+their last quarterly value will equal their default probability on
+their last day before bankruptcy filing. (Analysis\_Y9C.do)
+\item We currently do \textbf{not} filter out daily default probability
+data just because the probability exceeds some pre-defined threshold.
+We pursued this at one point, and decided that this would lead to
+removing too many legitimate default probabilities. (Analysis\_Y9C.do)
+\item The current benchmark NVI excludes FDIC-insured deposits and foreign
+deposits from a firm's inside-system liabilities. (Analysis\_Y9C.do)
+\end{itemize}
+\item ffunds.do
+\begin{itemize}
+\item The 'Other' category's assets are made up of the Flow of Funds assets
+for ABS issuers, credit unions, funding corporations, and finance
+companies (i.e. the remainder after we account for things we can easily
+see in KMV)
+\end{itemize}
+\item compile\_agg\_sector\_data.do
+\begin{itemize}
+\item While this script includes some code for a potential ``Mutual Fund''
+aggregate sector node, that node does not currently factor into the
+final NVI calculation. This was done earlier in our process, before
+we decided that those assets really ultimately belong to households,
+not the financial system. Code is kept around in case we change our
+mind, though.
+\item Our classifications of financial firms are determined wholly from
+the mkmvind\_name\_desc variable. 
+\item In our aggregate sector node compilations, we include any companies
+incorporated in the US, Bermuda, or Cayman Islands (chartered?)
+\item For some firms, total assets do not appear in the KMV dataset every
+quarter. In this case, we linearly interpolate between the quarters
+we have data.
+\item Merrill Lynch has a strange duplicate firm in the KMV dataset with
+huge default probabilities and identical assets (MKMVID = N04946).
+This ghost firm is deleted in our analysis. 
+\item Merrill Lynch also seems to appear in the KMV database for a few quarters
+after their assets are assumed by Bank of America. Merrill is removed
+for the quarters when this seems to be the case.
+\item The 'Other' category's probability of default is currently computed
+from the firms whose mkmvind\_name\_desc equals Investment Management,
+Finance NEC, or Finance Company. 
+\item While the aggregate SIFMA dealers data is used for asset and liability
+breakdowns for the Top 10 and Top 11-25 dealer nodes, we still use
+KMV data to come up with those nodes' default probabilities. We compile
+those numbers based on the asset-weighted average default probabilites
+for ``Security Brokers \& Dealers'' that are appropriately ranked
+per their assets, as recorded in the KMV balance sheet asset variable
+total\_assets\_current\_amt. These values \textbf{include} firms that
+are also included in the FR-Y9C sample. 
+\item For other aggregate sector nodes (Other, Insurance, REIT), firms that
+appear in the FR-Y9C sample are \textbf{excluded} from the calculation
+of that aggregate node's average default probability (i.e. their weight
+is set to zero). In theory, that firm's assets should also be removed
+from the total assets assigned to the aggregate node, although we
+are \textbf{not} doing that in the current iteration of the NVI.
+\end{itemize}
+\end{itemize}
+
+\end{document}
