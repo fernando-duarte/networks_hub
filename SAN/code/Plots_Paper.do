@@ -330,49 +330,49 @@ restore
 
 *Exploratory charts not yet in the paper
 
-*Average default probabilities, scaled by their contribution to system-wide NVI component
-twoway (line contribution_insurance contribution_bhc contribution_reit contribution_other contribution_dealer qt_dt if max_bank_bhc == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), ///
-	xtitle(" ", size(medsmall)) xlabel($charts_start(4)$charts_end, angle(45) labsize(small)) ylabel(,labsize(small)) ///
-	subtitle("% per year", position(11) size(small)) ///
-	ytitle(" ",  height(6)) ///
-	legend(order(1 "Insurance" 2 "Bank Holding Companies" 3 "REITs" 4 "Other" 5 "Top 25 Dealers") r(2) region(style(none)) size(small)) ///
-	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none))
-graph export ../output/NVI_contributions.pdf, as(pdf) replace
-graph export ../output/NVI_contributions.png, as(png) replace
+/* *Average default probabilities, scaled by their contribution to system-wide NVI component */
+/* twoway (line contribution_insurance contribution_bhc contribution_reit contribution_other contribution_dealer qt_dt if max_bank_bhc == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), /// */
+/* 	xtitle(" ", size(medsmall)) xlabel($charts_start(4)$charts_end, angle(45) labsize(small)) ylabel(,labsize(small)) /// */
+/* 	subtitle("% per year", position(11) size(small)) /// */
+/* 	ytitle(" ",  height(6)) /// */
+/* 	legend(order(1 "Insurance" 2 "Bank Holding Companies" 3 "REITs" 4 "Other" 5 "Top 25 Dealers") r(2) region(style(none)) size(small)) /// */
+/* 	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none)) */
+/* graph export ../output/NVI_contributions.pdf, as(pdf) replace */
+/* graph export ../output/NVI_contributions.png, as(png) replace */
 
-*Average default probabilities, scaled by their contribution to system-wide NVI component
-twoway (line contribution_insurance contribution_bhc contribution_reit contribution_kmv_other contribution_nonkmv_other contribution_dealer qt_dt if max_bank_bhc == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), ///
-	xtitle(" ", size(medsmall)) xlabel($charts_start(4)$charts_end, angle(45) labsize(small)) ylabel(,labsize(small)) ///
-	subtitle("% per year", position(11) size(small)) ///
-	ytitle(" ",  height(6)) ///
-	legend(order(1 "Insurance" 2 "Bank Holding Companies" 3 "REITs" 4 "KMV-Included Other" 5 "Not KMV-Included Other" 6 "Top 25 Dealers") r(3) region(style(none)) size(small)) ///
-	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none))
-graph export ../output/NVI_contributions_othersplit.pdf, as(pdf) replace
-graph export ../output/NVI_contributions_othersplit.png, as(png) replace
+/* *Average default probabilities, scaled by their contribution to system-wide NVI component */
+/* twoway (line contribution_insurance contribution_bhc contribution_reit contribution_kmv_other contribution_nonkmv_other contribution_dealer qt_dt if max_bank_bhc == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), /// */
+/* 	xtitle(" ", size(medsmall)) xlabel($charts_start(4)$charts_end, angle(45) labsize(small)) ylabel(,labsize(small)) /// */
+/* 	subtitle("% per year", position(11) size(small)) /// */
+/* 	ytitle(" ",  height(6)) /// */
+/* 	legend(order(1 "Insurance" 2 "Bank Holding Companies" 3 "REITs" 4 "KMV-Included Other" 5 "Not KMV-Included Other" 6 "Top 25 Dealers") r(3) region(style(none)) size(small)) /// */
+/* 	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none)) */
+/* graph export ../output/NVI_contributions_othersplit.pdf, as(pdf) replace */
+/* graph export ../output/NVI_contributions_othersplit.png, as(png) replace */
 
-*Scaling used above...
-twoway (line weight_insurance weight_bhc weight_reit weight_other weight_dealer qt_dt if max_bank_bhc == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), ///
-	xtitle(" ", size(medsmall)) xlabel($charts_start(4)$charts_end, angle(45) labsize(small)) ylabel(,labsize(small)) ///
-	subtitle("Proportion", position(11) size(small)) ///
-	ytitle(" ",  height(6)) ///
-	legend(order(1 "Insurance" 2 "Bank Holding Companies" 3 "REITs" 4 "Other" 5 "Top 25 Dealers") r(2) region(style(none)) size(small)) ///
-	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none))
-graph export ../output/NVI_wts.pdf, as(pdf) replace
-graph export ../output/NVI_wts.png, as(png) replace
+/* *Scaling used above... */
+/* twoway (line weight_insurance weight_bhc weight_reit weight_other weight_dealer qt_dt if max_bank_bhc == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), /// */
+/* 	xtitle(" ", size(medsmall)) xlabel($charts_start(4)$charts_end, angle(45) labsize(small)) ylabel(,labsize(small)) /// */
+/* 	subtitle("Proportion", position(11) size(small)) /// */
+/* 	ytitle(" ",  height(6)) /// */
+/* 	legend(order(1 "Insurance" 2 "Bank Holding Companies" 3 "REITs" 4 "Other" 5 "Top 25 Dealers") r(2) region(style(none)) size(small)) /// */
+/* 	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none)) */
+/* graph export ../output/NVI_wts.pdf, as(pdf) replace */
+/* graph export ../output/NVI_wts.png, as(png) replace */
 
-*Time-varying scatter of betas
-bys qt_dt: egen beta_mean = mean(beta)
-bys qt_dt: egen beta_25 = pctile(beta), p(25)
-bys qt_dt: egen beta_75 = pctile(beta), p(75)
+/* *Time-varying scatter of betas */
+/* bys qt_dt: egen beta_mean = mean(beta) */
+/* bys qt_dt: egen beta_25 = pctile(beta), p(25) */
+/* bys qt_dt: egen beta_75 = pctile(beta), p(75) */
 
-twoway (scatter beta qt_dt if qt_dt >= $charts_start & qt_dt <= $charts_end, msize(vtiny)) || ///
-	(line beta_mean beta_25 beta_75 qt_dt if qt_dt >= $charts_start & qt_dt <= $charts_end) || ///
-	(line beta_max_1 qt_dt if max_bank == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), ///
-	ytitle("",  height(6)) xtitle("", size(medsmall)) ylabel(0 .1 .2 .3 .4 .5 .6 .7 .8 .9) ///
-	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none)) ///
-	legend(order(1 "Actual {&beta}s" 2 "Mean of {&beta}" 3 "25th Percentile" 4 "75th Percentile" 5 "{&beta}{superscript:+}") r(3) region(style(none)) size(small)) ///
-	xlabel($charts_start(4)$charts_end, angle(45) labsize(medsmall)) ///
-	subtitle("Inside Liabilities/Total Liabilities", position(11) size(small))
-graph export ../output/beta_dist.pdf, as(pdf) replace
-graph export ../output/beta_dist.png, as(png) replace
+/* twoway (scatter beta qt_dt if qt_dt >= $charts_start & qt_dt <= $charts_end, msize(vtiny)) || /// */
+/* 	(line beta_mean beta_25 beta_75 qt_dt if qt_dt >= $charts_start & qt_dt <= $charts_end) || /// */
+/* 	(line beta_max_1 qt_dt if max_bank == 1 & qt_dt >= $charts_start & qt_dt <= $charts_end), /// */
+/* 	ytitle("",  height(6)) xtitle("", size(medsmall)) ylabel(0 .1 .2 .3 .4 .5 .6 .7 .8 .9) /// */
+/* 	title(" ", pos(11) size(medlarge)) graphregion(color(white) style(none)) /// */
+/* 	legend(order(1 "Actual {&beta}s" 2 "Mean of {&beta}" 3 "25th Percentile" 4 "75th Percentile" 5 "{&beta}{superscript:+}") r(3) region(style(none)) size(small)) /// */
+/* 	xlabel($charts_start(4)$charts_end, angle(45) labsize(medsmall)) /// */
+/* 	subtitle("Inside Liabilities/Total Liabilities", position(11) size(small)) */
+/* graph export ../output/beta_dist.pdf, as(pdf) replace */
+/* graph export ../output/beta_dist.png, as(png) replace */
 
