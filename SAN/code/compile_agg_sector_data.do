@@ -230,7 +230,7 @@ frame `bd_node_frame'{
 	label var assets_total "KMV assets, EDF sample"
 	save ../temp/broker_nodes_config$bd_config.dta, replace
 }
-stop
+
 keep qt_dt mkmv_id total_assets_current_amt total_liabilities_amt edf01 edf01_8 edf01_mean
 
 *bit more intuitive name, now

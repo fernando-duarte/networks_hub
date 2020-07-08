@@ -113,23 +113,23 @@ replace double_count = 1 if count_top_matches > 1 & matchedon == 2
 *Format then merge list of nodes that appear in Top 25 broker dealers at each quarter
 *	If they appear in those aggregated nodes, drop them from FR-Y9C sample
 preserve
-use ../temp/broker_nodes_list, clear
+use ../temp/broker_nodes_list_config$bd_config, clear
 keep qt_dt mkmv_id
 gen broker_node = 1
-save ../temp/broker_nodes_list, replace
+save ../temp/broker_nodes_list_config$bd_config, replace
 restore
 drop _merge
 
 
-if $output_simulation_data == 0{
-	*Comment out this next portion if we don't want the aggregate nodes
-	merge 1:1 qt_dt mkmv_id using ../temp/broker_nodes_list
-	drop if _merge == 2
-	drop if broker_node == 1
+/* if $output_simulation_data == 0{ */
+*Comment out this next portion if we don't want the aggregate nodes
+merge 1:1 qt_dt mkmv_id using ../temp/broker_nodes_list_config$bd_config
+drop if _merge == 2
+drop if broker_node == 1
 
-	*Append data for dealer aggregate nodes, from aggregated FOCUS SIFMA data
-	append using ../temp/broker_nodes
-}
+*Append data for dealer aggregate nodes, from aggregated FOCUS SIFMA data
+append using ../temp/broker_nodes_config$bd_config
+
 ******************************************************************************************
 *
 *			Some unit fixing, formatting, and initial identifiers
@@ -147,6 +147,7 @@ foreach bank of numlist $bankSample {
 *Allow the new broker aggregated nodes to become the Beta+ for the NVI
 replace keep_obs = 1 if tkr == "BRO10" | tkr == "BRO25"
 
+drop _*
 bys entity: egen count_q 	= count(qt_dt) if qt_dt <= $charts_end & qt_dt >= $charts_start
 gen full_sample 			= 0
 replace full_sample			= 1 if count_q == $charts_end - $charts_start + 1
@@ -298,12 +299,12 @@ gen contag_index = beta*c //Duarte Jones Contagion index = w*beta*lambda
 gen gamma_max = (1/beta_max_1)-1
 
 *Run sum stats now, before things get more complicated 
-if $output_simulation_data == 0{
-	preserve
-	drop if inlist(tkr, "BRO10", "BRO25")
-	do ../code/sum_stats_wholesample.do
-	restore
-}
+/* if $output_simulation_data == 0{ */
+preserve
+drop if inlist(tkr, "BRO10", "BRO25")
+do ../code/sum_stats_wholesample.do
+restore
+/* } */
 
 ***************************************************************************************************
 *
@@ -514,7 +515,7 @@ foreach var of varlist y_15_intra_deposits RISKY833 RISKM365 RISKM366 RISKM367 R
 	local perc_plot_y15 `perc_plot_y15' `var'
 }
 
-if $output_simulation_data == 0{
+/* if $output_simulation_data == 0{ */
 	*Output large dataset. Will be used for Plots_Appendix, and general exploratory work.
 	save ../output/Contagion_Data, replace
 
@@ -537,79 +538,79 @@ if $output_simulation_data == 0{
 	save ../output/Contagion_Data_select, replace
 
 	restore
-}
+/* } */
 ***************************************************************************************************
 *
 *			Putting into excel file for simulations
 *
 ***************************************************************************************************
 
-if $output_simulation_data == 1{
-	preserve
-	format qt_dt %8.0g
-	tempvar temp
-	bys qt_dt: egen `temp' = max(nvi_benchmark)
-	replace nvi_benchmark = `temp'
-	drop if inlist(tkr, "BRO10", "BRO25")
-	gen p_bar = BHCK2948*(10^(-3))
-	gen b = (BHCK2948 - (liab_in + (1/2)*liab_in_unc))*(10^(-3))
+/* if $output_simulation_data == 1{ */
+preserve
+format qt_dt %8.0g
+tempvar temp
+bys qt_dt: egen `temp' = max(nvi_benchmark)
+replace nvi_benchmark = `temp'
+drop if inlist(tkr, "BRO10", "BRO25")
+gen p_bar = BHCK2948*(10^(-3))
+gen b = (BHCK2948 - (liab_in + (1/2)*liab_in_unc))*(10^(-3))
 
-	/* keep nm_short tkr p_bar assets c b delta delta_alt beta w qt_dt nvi_benchmark */
-    foreach var in $simulation_data_vars{
-    	capture confirm variable `var', exact
-    	disp _rc
-    	if _rc != 0{
-    		gen `var' = .
-    		}
-	}
-	export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("BHCs", replace) firstrow(variables)
-	restore
-
-	gen p_bar = .
-	gen b = .
-	local insurance_name "Insurance Aggregate"
-	local reit_name "REIT Aggregate"
-	local other_name "Other Aggregate"
-
-	local insurance_tkr "INSUR"
-	local reit_tkr "REIT"
-	local other_tkr "OTHER"
-	tempfile temp
-
-	levelsof qt_dt, local(qt) clean
-	foreach qt in `qt'{
-	preserve
-	keep if qt_dt == `qt'
-	keep if _n == 1
-	expand 4 if _n == 1
-	local row  2
-	foreach sec in insurance reit other{
-		replace nm_short = "``sec'_name'" if _n == `row'
-		replace tkr = "``sec'_tkr'" if _n == `row'
-		replace c = (1-perc_in_`sec')*total_`sec' if _n == `row'
-		replace p_bar = liab_total_`sec' if _n == `row'
-		replace assets = total_`sec' if _n == `row'
-		replace delta = delta_`sec' if _n == `row'
-		replace w = total_`sec' - liab_total_`sec' if _n == `row'
-		replace beta = . if _n == `row'
-		replace b = . if _n == `row'
-		local row = `row' + 1	
-	}
-		drop if _n == 1
-		/* keep qt_dt nm_short tkr c p_bar assets delta w beta b */
-		capture append using `temp'
-		save `temp', replace
-	restore
-	}
-	use `temp', clear
-	format qt_dt %8.0g
-    foreach var in $simulation_data_vars{
-    	capture confirm variable `var', exact
-    	disp _rc
-    	if _rc != 0{
-    		gen `var' = .
-    		}
-	}
-	
-	export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("Approx Aggregates", replace) firstrow(variables)
+/* keep nm_short tkr p_bar assets c b delta delta_alt beta w qt_dt nvi_benchmark */
+foreach var in $simulation_data_vars{
+	capture confirm variable `var', exact
+	disp _rc
+	if _rc != 0{
+		gen `var' = .
+		}
 }
+export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("BHCs", replace) firstrow(variables)
+restore
+
+gen p_bar = .
+gen b = .
+local insurance_name "Insurance Aggregate"
+local reit_name "REIT Aggregate"
+local other_name "Other Aggregate"
+
+local insurance_tkr "INSUR"
+local reit_tkr "REIT"
+local other_tkr "OTHER"
+tempfile temp
+
+levelsof qt_dt, local(qt) clean
+foreach qt in `qt'{
+preserve
+keep if qt_dt == `qt'
+keep if _n == 1
+expand 4 if _n == 1
+local row  2
+foreach sec in insurance reit other{
+	replace nm_short = "``sec'_name'" if _n == `row'
+	replace tkr = "``sec'_tkr'" if _n == `row'
+	replace c = (1-perc_in_`sec')*total_`sec' if _n == `row'
+	replace p_bar = liab_total_`sec' if _n == `row'
+	replace assets = total_`sec' if _n == `row'
+	replace delta = delta_`sec' if _n == `row'
+	replace w = total_`sec' - liab_total_`sec' if _n == `row'
+	replace beta = . if _n == `row'
+	replace b = . if _n == `row'
+	local row = `row' + 1	
+}
+	drop if _n == 1
+	/* keep qt_dt nm_short tkr c p_bar assets delta w beta b */
+	capture append using `temp'
+	save `temp', replace
+restore
+}
+use `temp', clear
+format qt_dt %8.0g
+foreach var in $simulation_data_vars{
+	capture confirm variable `var', exact
+	disp _rc
+	if _rc != 0{
+		gen `var' = .
+		}
+}
+
+export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("Approx Aggregates", replace) firstrow(variables)
+/* } */

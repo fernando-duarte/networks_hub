@@ -55,7 +55,7 @@ global changed_WRDS_files 1
 
 *Are we doing a full update and chart regeneration, or just outputting data for simulations?
 *0 for full update, 1 for just outputting data
-global output_simulation_data 1
+/* global output_simulation_data 1 */
 
 * Standardized variable list for simulation data output
 global simulation_data_vars nm_short qt_dt tkr delta delta_alt beta w c assets nvi_benchmark p_bar b
@@ -76,6 +76,12 @@ global bankSample 1039502 1068025 1069778 1070345 1073757 1074156 ///
 *What probability of default do you want for the fixed-delta robustness exercise? (percent in decimal form)
 global delta_fixed 0.06
 
+* New macro that tracks "name" of current environment. Differentiates between Unix RAN and Unix SAN
+global  MY_ENV: env MY_ENV
+if `"$MY_ENV"' == ""{
+    global MY_ENV SAN
+}
+
 *Needed for installing packages on san
 if "`c(os)'"~="Windows" & `"$MY_ENV"' != "RAN"{
 	set httpproxyhost "p1web1.frb.org"
@@ -83,11 +89,6 @@ if "`c(os)'"~="Windows" & `"$MY_ENV"' != "RAN"{
 	set httpproxy on
 
 	set odbcmgr unixodbc
-}
-
-global  MY_ENV: env MY_ENV
-if `"$MY_ENV"' == ""{
-    global MY_ENV SAN
 }
 
 capture ssc install labutil
@@ -127,25 +128,24 @@ global haverData "K:/DLX/data"
 * Run this do file locally, once a quarter (others should be run on san)
 //do ../code/ffunds.do
 
-if $output_simulation_data == 0 {
-	do ../code/Update_Data.do
-    do ../code/Match_RSSID_MKMVID.do
-    do ../code/CallDeposits.do
-    if `"$MY_ENV"' ~= "RAN"{
-        do ../code/drd_matching.do
-    }
-    do ../code/KMV_clean.do
-    do ../code/Analysis_Y9C.do
-	shell /data/apps/Anaconda2-5.0.1/bin/python `code'/process_FOCUS.py
+do ../code/Update_Data.do
+do ../code/Match_RSSID_MKMVID.do
+do ../code/CallDeposits.do
+if `"$MY_ENV"' ~= "RAN"{
+    do ../code/drd_matching.do
 }
+do ../code/KMV_clean.do
+do ../code/Analysis_Y9C.do
+shell /data/apps/Anaconda2-5.0.1/bin/python `code'/process_FOCUS.py
+
 *unsure what the code macro does above - FR
 do ../code/compile_agg_sector_data.do
 do ../code/Model_series_processing.do
 do ../code/agg_sector_composition.do
 
-if $output_simulation_data == 0{
-	do ../code/Plots_Paper.do
-}
+
+do ../code/Plots_Paper.do
+
 //do ../code/Plots_Appendix.do
 
 shell /data/apps/Anaconda2-5.0.1/bin/python clean_sumstats.py

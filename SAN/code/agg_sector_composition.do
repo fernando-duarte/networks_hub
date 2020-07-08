@@ -32,7 +32,7 @@ Broker Node Info
 ****************************************************************/
 
 /* use $san/RDS/Work/cmf/b1far01/Fernando/Network_Contagion/temp/broker_nodes.dta, clear  //This file finalized in Model_series_processing.do */
-use ../temp/broker_nodes.dta, clear
+use ../temp/broker_nodes_config$bd_config.dta, clear
 	
 	gen beta 	= liabs_in_frac
 	gen w 		= BHCK2170*10^(-3) - BHCK2948*10^(-3)
