@@ -12,7 +12,13 @@ set more off
 *Merge with FI reg data to obtain RSSID - CUSIP match
 	*NOTE: when running, FI was updating reg data - commented out data should be right generally
 *use $regData/fr_y9c/qbhc_nc_clean.dta, clear
-use $regData/fr_y9c/archive/1803/qbhc_nc_clean.dta, clear
+
+if `"$MY_ENV"' ~= "RAN"{
+	use $regData/fr_y9c/archive/1803/qbhc_nc_clean.dta, clear
+}
+else{
+	use ../temp/qbhc_nc_all.dta, clear
+}
 
 gen qt_dt 	= yq(year, quarter)
 keep entity qt_dt id_cusip name

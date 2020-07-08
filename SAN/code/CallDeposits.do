@@ -16,7 +16,12 @@ set maxvar 9000
 ******use $regData/call/qbank_nc_clean.dta, clear
 	*NOTE: when running, FI was updating reg data - commented out data should be right generally
 *use $regData/call/qbank_nc_all.dta, clear
-use $regData/call/archive/1803/qbank_nc_all.dta, clear
+if `"$MY_ENV"' ~= "RAN"{
+	use $regData/call/archive/1803/qbank_nc_all.dta, clear	
+	}
+else{
+	use ../temp/qbank_nc_all.dta, clear
+	}
 
 *Separate dates
 tostring date, replace

@@ -1,10 +1,10 @@
 *********************************************************************************
 *
 *	Summary Statistics for Y9C Sample
-*	Collin Jones 
-*	Purpose: Construct some summary statistics tables of BHC assets and liabilities. 
+*	Collin Jones
+*	Purpose: Construct some summary statistics tables of BHC assets and liabilities.
 *		This new code runs the major tables on the entire Y9C subsample, with double-checked
-*		consistency with numbers from rest of the analysis. 
+*		consistency with numbers from rest of the analysis.
 *		Also creates tables for sector-wide default probability samples.
 *		Note: This code is called by Model_series_processing at an appropriate stage of the merging process
 *
@@ -113,7 +113,7 @@ gen help_asset_in_othermbs = .5*(BHCKG308 + BHCKG311 + BHCKG381 + BHCKK146 + BHC
 label var help_asset_in_othermbs "Other MBS"
 
 gen help_asset_in_othersec = .5*BHCKA511
-label var help_asset_in_othersec "Other Securities" 
+label var help_asset_in_othersec "Other Securities"
 
 gen help_asset_in_priv_lab_abs = BHCKC026 + BHCKC027 + BHCKG336 + BHCKG339 + BHCKG340 + ///
 	BHCKG343 + BHCKG344 + BHCKG347 + BHCKG383 + BHCKG384 + BHCKG385
@@ -156,7 +156,7 @@ gen help_asset_out_othermbs = .5*(BHCKG308 + BHCKG311 + BHCKG381 + BHCKK146 + BH
 label var help_asset_out_othermbs "Other MBS"
 
 gen help_asset_out_othersec = BHCK1737 + BHCK1741 + BHCK1742 + BHCK1746 + BHCK1752 + BHCKG386 + .5*BHCKA511
-label var help_asset_out_othersec "Other Securities" 
+label var help_asset_out_othersec "Other Securities"
 
 gen help_asset_out_gov_debt = BHCK0211 + BHCK1287 + BHCK1289 + BHCK1293 + BHCK1294 + BHCK1298 + BHCK8496 + BHCK8499 + BHCM3531 + BHCM3532 + BHCM3533
 label var help_asset_out_gov_debt "State, Treasury, and Agency Debt"
@@ -274,52 +274,56 @@ esttab using ../output/asset_out.tex, coeflabels(`e(labels)') main(mean 2) bookt
 *
 *********************************************************************************************************
 use ../output/firm_list_final_wweights, clear
-gsort sector -weight tkr
+
+tempvar sorter
+gsort sector -weight tkr, gen(`sorter')
 replace company_name = subinstr(company_name, "&", "", 10)
 
+drop nm_short
+rename company_name nm_short 
+rename total_liabilities_amt p_bar
+rename total_assets_current_amt assets
+rename edf01 delta
+rename edf01_mean delta_alt
+
+gen w = assets - p_bar
+foreach var in $simulation_data_vars{
+	capture confirm variable `var', exact
+	disp _rc
+	if _rc != 0{
+		gen `var' = .
+		}
+	}
 
 levelsof sector, local(sectors)
 levelsof qt_dt, local(quarters)
-//foreach quarter in `quarters'{
 foreach sec in `sectors'{
-	preserve
-	disp "`sec'"
-	//keep if qt_dt == `quarters'
-	keep if sector == "`sec'" & weight > 0
-	keep company_name tkr total_assets_current_amt edf01 edf01_mean total_liabilities_amt qt_dt
-	rename company_name nm_short 
-	rename total_liabilities_amt p_bar
-	rename total_assets_current_amt assets
-	rename edf01 delta
-	rename edf01_mean delta_alt
-	gen b = .
-	gen c = .
-	gen w = assets - p_bar
-	gen nvi_benchmark = .
-	export excel ../temp/node_stats_forsimulation_all, sheet("`sec'") firstrow(variables) sheetreplace
-	restore
+	/* keep if sector == "`sec'" & weight > 0 */
+	/* keep if weight > 0 */
+	/* keep company_name tkr total_assets_current_amt edf01 edf01_mean total_liabilities_amt qt_dt */
+	export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all if sector == "`sec'" & weight > 0, ///
+	  sheet("`sec'", replace) firstrow(variables) 
 }
-//}
 
 keep if qt_dt == $snapshot_date
 expand 3 if sector != sector[_n+1]
 gsort sector -weight tkr
 
-
 //nm_short tkr p_bar assets c b delta beta w
 
-replace company_name = "Number of Firms in Sample" if tkr == tkr[_n+1] & tkr != tkr[_n+2]
-replace weight = count if company_name == "Number of Firms in Sample"
-replace company_name = "Weighting from Rest of Sample" if sector != sector[_n+1]
-replace weight = 0 if company_name == "Weighting from Rest of Sample"
-bys sector: egen temp = total(weight) if weight < .01 | company_name == "Weighting from Rest of Sample"
-replace weight = temp if company_name == "Weighting from Rest of Sample"
+replace nm_short = "Number of Firms in Sample" if tkr == tkr[_n+1] & tkr != tkr[_n+2]
+replace weight = count if nm_short == "Number of Firms in Sample"
+replace nm_short = "Weighting from Rest of Sample" if sector != sector[_n+1]
+replace weight = 0 if nm_short == "Weighting from Rest of Sample"
+bys sector: egen temp = total(weight) if weight < .01 | nm_short == "Weighting from Rest of Sample"
+replace weight = temp if nm_short == "Weighting from Rest of Sample"
 keep if weight > .01 | inlist(sector, "Top 10 Dealers", "Top 11-25 Dealers")
 gen sorter = _n
-replace sorter = 1000 if company_name == "Number of Firms in Sample"
-replace sorter = 1001 if company_name == "Weighting from Rest of Sample"
-drop if company_name == "Weighting from Rest of Sample" & inlist(sector, "Top 10 Dealers", "Top 11-25 Dealers")
-labmask sorter, values(company_name)
+replace sorter = 1000 if nm_short == "Number of Firms in Sample"
+replace sorter = 1001 if nm_short == "Weighting from Rest of Sample"
+drop if nm_short == "Weighting from Rest of Sample" & inlist(sector, "Top 10 Dealers", "Top 11-25 Dealers")
+labmask sorter, values(nm_short)
+
 
 estpost tabstat weight if sector == "Broker Dealers", columns(statistics) by(sorter) nototal
 esttab using ../output/dealers_sample.tex, coeflabels(`e(labels)') main(mean 2) booktabs nonum replace title(" ") mtitle("Asset Weighting") noobs nonotes not

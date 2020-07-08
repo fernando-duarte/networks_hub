@@ -16,10 +16,11 @@
 *
 *********************************************************************************
 
-clear
+clear all
 capture cd code/
 local pwd: pwd
 capture log close
+set maxvar 8000
 
 global runthrough_tag rerun_FAR
 
@@ -54,7 +55,10 @@ global changed_WRDS_files 1
 
 *Are we doing a full update and chart regeneration, or just outputting data for simulations?
 *0 for full update, 1 for just outputting data
-global output_simulation_data 0
+global output_simulation_data 1
+
+* Standardized variable list for simulation data output
+global simulation_data_vars nm_short qt_dt tkr delta delta_alt beta w c assets nvi_benchmark p_bar b
 
 *Which different bankruptcy costs do we want to try in the NVI? (in 5)
 global gammas 1 5 10 15 20 30
@@ -73,13 +77,17 @@ global bankSample 1039502 1068025 1069778 1070345 1073757 1074156 ///
 global delta_fixed 0.06
 
 *Needed for installing packages on san
-if "`c(os)'"~="Windows"{
-
+if "`c(os)'"~="Windows" & `"$MY_ENV"' != "RAN"{
 	set httpproxyhost "p1web1.frb.org"
 	set httpproxyport 8080
 	set httpproxy on
 
 	set odbcmgr unixodbc
+}
+
+global  MY_ENV: env MY_ENV
+if `"$MY_ENV"' == ""{
+    global MY_ENV SAN
 }
 
 capture ssc install labutil
@@ -89,7 +97,7 @@ capture net install grc1leg, from(http://www.stata.com/users/vwiggins)
 
 *For charts
 global charts_start 	= yq(2002, 1)
-global charts_end	= yq(2017, 4)
+global charts_end		= yq(2017, 4)
 
 *For quarter-specific sum stats
 global snapshot_date 	= yq(2017, 4)
@@ -103,7 +111,15 @@ else if "`c(os)'" == "Windows" {
 
 *Location of FI's reg data folder
 global regData "$san/RDS/Derived/reg_data_nc"
-global entity_permco_date 	= "20161231"
+global entity_permco_date 	= "20181231"
+
+/* How we deal with broker dealer asset double counting: */
+/* 0 -- Nothing. GS, MS, and the like in both Y9C sample and Top 10 Dealer node. */
+/* 1 -- Maximum data detail. Switch GS, MS assets to Y9C node. Remove BHCKC252 values of KMVID overlap from Top 10 Node. */
+/* 2 -- Maximum consistency. Keep GS, MS in Top 10 dealer node. ADD BHCK2170 - BHCKC252 to Top 10 Node. */
+/* 3 -- Maximum data detail and double counting avoidance. Switch GS, MS assets to Y9C node. Remove BHCKC252 values of ALL Y9C sample BHCs. */
+
+global bd_config 3
 
 *Location of Haver Analytics data folder
 global haverData "K:/DLX/data" 
@@ -111,13 +127,15 @@ global haverData "K:/DLX/data"
 * Run this do file locally, once a quarter (others should be run on san)
 //do ../code/ffunds.do
 
-if $output_simulation_data == 0{
+if $output_simulation_data == 0 {
 	do ../code/Update_Data.do
-	do ../code/Match_RSSID_MKMVID.do 
-	do ../code/CallDeposits.do 
-
-	do ../code/drd_matching.do
-	do ../code/Analysis_Y9C.do 
+    do ../code/Match_RSSID_MKMVID.do
+    do ../code/CallDeposits.do
+    if `"$MY_ENV"' ~= "RAN"{
+        do ../code/drd_matching.do
+    }
+    do ../code/KMV_clean.do
+    do ../code/Analysis_Y9C.do
 	shell /data/apps/Anaconda2-5.0.1/bin/python `code'/process_FOCUS.py
 }
 *unsure what the code macro does above - FR

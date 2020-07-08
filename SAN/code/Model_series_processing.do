@@ -37,10 +37,10 @@ gen liab_in_possible = liab_in + liab_in_unc
 *Generate variable to flag institutions that ever appear in the FR-Y15
 levelsof mkmv_id if !missing(RISKM370), local(y15_sample)
 global y15_sample = subinstr(`"`y15_sample'"', " ", ", ", 100)
-gen y15_sample = 0
-replace y15_sample = 1 if !missing(RISKM370)
-bys mkmv_id: egen y15_sample_temp = max(y15_sample)
-replace y15_sample = y15_sample_temp
+gen y15_sample							= 0
+replace y15_sample						= 1 if !missing(RISKM370)
+bys mkmv_id: egen y15_sample_temp		= max(y15_sample)
+replace y15_sample						= y15_sample_temp
 drop y15_sample_temp
 
 *Finding % of uninsured deposits (total - foreign + domestic) that Fr-Y15 says are inside system,
@@ -169,6 +169,10 @@ replace beta_nocall = beta if missing(beta_nocall)
 
 *w=net worth
 gen w = BHCK2170*10^(-3) - BHCK2948*10^(-3)
+
+* Assume that negative net worth is an already-defaulting firm that the bankrutpcy screens
+* didn't pick up (seems to mostly be the case)
+drop if w < 0
 
 *c = outside assets
 gen c 				= (BHCK2170*10^(-3) - (asset_in*10^(-3) + (1/2)*asset_in_unc*10^(-3))) // Convert to millions
@@ -550,9 +554,15 @@ if $output_simulation_data == 1{
 	gen p_bar = BHCK2948*(10^(-3))
 	gen b = (BHCK2948 - (liab_in + (1/2)*liab_in_unc))*(10^(-3))
 
-	keep nm_short tkr p_bar assets c b delta delta_alt beta w qt_dt nvi_benchmark
-
-	export excel ../temp/node_stats_forsimulation_all.xls, sheet("BHCs") firstrow(variables) sheetreplace
+	/* keep nm_short tkr p_bar assets c b delta delta_alt beta w qt_dt nvi_benchmark */
+    foreach var in $simulation_data_vars{
+    	capture confirm variable `var', exact
+    	disp _rc
+    	if _rc != 0{
+    		gen `var' = .
+    		}
+	}
+	export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("BHCs", replace) firstrow(variables)
 	restore
 
 	gen p_bar = .
@@ -586,12 +596,20 @@ if $output_simulation_data == 1{
 		local row = `row' + 1	
 	}
 		drop if _n == 1
-		keep qt_dt nm_short tkr c p_bar assets delta w beta b
+		/* keep qt_dt nm_short tkr c p_bar assets delta w beta b */
 		capture append using `temp'
 		save `temp', replace
 	restore
 	}
 	use `temp', clear
 	format qt_dt %8.0g
-	export excel ../temp/node_stats_forsimulation_all.xls, sheet("Approx Aggregates") firstrow(variables) sheetreplace
+    foreach var in $simulation_data_vars{
+    	capture confirm variable `var', exact
+    	disp _rc
+    	if _rc != 0{
+    		gen `var' = .
+    		}
+	}
+	
+	export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("Approx Aggregates", replace) firstrow(variables)
 }

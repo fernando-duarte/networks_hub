@@ -8,94 +8,6 @@
 *
 *********************************************************************************
 
-clear
-set more off
-
-*********************************************************************************
-*
-*	First, some KMV data cleaning.
-*		Considering moving these to a separate file. 
-*
-*********************************************************************************
-
-
-foreach ver in RawDFS RawDFS8{
-
-local filename = regexr("`ver'", "Raw", "")
-capture confirm file ../temp/`filename'.dta
-
-if _rc != 0{
-	use ../temp/`ver'.dta, clear
-	*Date clean-up
-	*Note: might need to use this first line if using KMV V8
-
-	if "`ver'" == "RawDFS8"{
-		gen date0 	= dofc(dt_day)
-	}
-	else{
-	capture gen date0 	= date(dt_day, "YMD")
-	if _rc != 0{
-		gen date0 = dt_day
-	}
-	}
-
-	merge m:1 mkmv_id using ../temp/bankruptcies.dta
-	drop _merge
-
-	foreach k in 1 2 3{
-		drop if date0 >= bankruptcy_datetime`k' & !missing(bankruptcy_datetime`k') & bankruptcy_datetime`k' >= dofq($charts_start)
-	}
-
-	*Uncomment if dropping based on high EDF scores
-	/*
-	if "`ver'" == "RawDFS"{
-	preserve
-		keep if kmv_country_id == "USA" 
-		keep if date0 >= $charts_start
-		keep if inlist(mkmvind_name_desc, "BANKS AND S&LS", "FINANCE COMPANIES", "FINANCE NEC", "INSURANCE - LIFE", ///
-			"INSURANCE - PROP/CAS/HEALTH", "INVESTMENT MANAGEMENT", "REAL ESTATE INVESTMENT TRUSTS", "SECURITY BROKERS & DEALERS")
-		drop if mkmv_id == "N04946"
-		keep if annualized_edf_01yr_pct >= 34
-		save ../temp/high_edf_drops, replace
-	restore
-	}
-	drop if annualized_edf_01yr_pct >= 34
-	*/
-
-	gen qt_dt 	= qofd(date0)
-	gen year 	= year(date0)
-		
-	*Will aggregate both by last obs and by mean. The one named edf01 will be used in actual series.
-	rename annualized_edf_01yr_pct edf01
-	rename annualized_qdf_01yr_pct qdf01
-	gen edf01_mean = edf01
-	collapse (mean) edf01_mean (lastnm) edf01 qdf01 (lastnm) mkmvind_name_desc total_assets_current_amt total_liabilities_amt kmv_country_id, by(mkmv_id qt_dt)
-	replace 				edf01 = edf01/100
-	replace 				edf01_mean = edf01_mean/100
-	replace 				qdf01 = qdf01/100
-
-	bys mkmv_id (qt_dt): replace mkmvind_name_desc = mkmvind_name_desc[_n-1] if mkmvind_name_desc == ""
-	bys mkmv_id (qt_dt): replace mkmvind_name_desc = mkmvind_name_desc[_N]
-
-	if "`ver'" == "RawDFS8"{
-		keep mkmv_id qt_dt edf01 qdf01 edf01_mean
-		rename edf01 edf01_8
-		rename qdf01 qdf01_8
-		}
-	else{
-		*KMV industry category sometimes missing. We forward fill on the industry tag,
-		*	then sets all industry tags within a company to the last value for that company.
-		*	A problemmatic if a firm legitimately switches industries mid-sample. Haven't spotted
-		*	any major issues, though.
-		keep mkmv_id qt_dt edf01 qdf01 mkmvind_name_desc total_assets_current_amt total_liabilities_amt kmv_country_id edf01_mean
-		bys mkmv_id (qt_dt): replace mkmvind_name_desc = mkmvind_name_desc[_n-1] if mkmvind_name_desc == ""
-		bys mkmv_id (qt_dt): replace mkmvind_name_desc = mkmvind_name_desc[_N]
-	}
-
-	save ../temp/`filename'.dta, replace
-}
-
-}
 
 *********************************************************************************
 *
@@ -129,19 +41,18 @@ joinby entity using ../temp/RSSID_MKMVID.dta, unmatched(master)
 drop _merge
 
 *Merge in KMV default probs. Drop unmatched KMV rows (i.e. not in Y9C)
-merge m:1 mkmv_id qt_dt using ../temp/DFS.dta
-keep if _merge == 3 | _merge == 1
+merge m:1 mkmv_id qt_dt using ../temp/DFS.dta, keep(1 3)
 drop _merge
-merge m:1 mkmv_id qt_dt using ../temp/DFS8.dta
-keep if _merge == 3 | _merge == 1
+merge m:1 mkmv_id qt_dt using ../temp/DFS8.dta, keep(1 3)
 drop _merge
 
 *Average over edf01 duplicates.
-bys entity qt_dt: egen prob_default_phys 	= mean(edf01)
+bys entity qt_dt: egen prob_default_phys		= mean(edf01)
 bys entity qt_dt: egen prob_default_phys_alt 	= mean(edf01_mean)
-bys entity qt_dt: egen prob_default_neut 	= mean(qdf01)
-bys entity qt_dt: egen prob_default_phys8 	= mean(edf01_8)
-bys entity qt_dt: egen prob_default_neut8 	= mean(qdf01_8)
+bys entity qt_dt: egen prob_default_neut		= mean(qdf01)
+bys entity qt_dt: egen prob_default_phys8		= mean(edf01_8)
+bys entity qt_dt: egen prob_default_neut8		= mean(qdf01_8)
+
 duplicates drop entity qt_dt, force
 
 *Drop if a BHC is only there for one period
@@ -181,7 +92,7 @@ foreach var of varlist BH*{
 *Component of in-financial assets unchanging from 3/2002
 egen assets_in_unchanged 	= rowtotal(BHCK0397	BHDMB987 BHCKB989 BHCK2130)
 egen assets_unc_unchanged 	= rowtotal(BHCK0395	BHCKA511 BHCK3163 BHCKA519 BHCK6438	BHCKB026 BHCK5507 BHCKB556 BHCKA520 BHCK2168)
-	***BHCKA519, BHCKA520 end on 2018-03-31
+	***BHCKA519, BHCKA520 end on 2013-31
 
 *Non Agency Hold-To-Maturity MBS
 *In
@@ -316,7 +227,6 @@ gen asset_in 		= assets_in_unchanged + assets_htm_mbs + assets_in_afs_mbs + asse
 gen asset_in_unc 	= assets_unc_unchanged + assets_in_htm_mbs_unc + assets_in_afs_mbs_unc + assets_in_trad_mbs_unc + assets_in_afs_cmo_unc + assets_in_htm_cmo_unc + assets_in_trad_asst_unc + assets_in_deriv_unc + assets_in_insur_unc + assets_in_loans_unc	
 gen asset_in_frac 	= (asset_in + (1/2)*asset_in_unc)/BHCK2170
 
-
 ******************************************************************************************
 *
 *					Call Report Merging
@@ -330,15 +240,13 @@ gen asset_in_frac 	= (asset_in + (1/2)*asset_in_unc)/BHCK2170
 
 *Use FI's master parent matching to see if this BHC has another parent
 gen rssd9001 = entity
-merge 1:1 qt_dt rssd9001 using ../temp/rssd_hh_match_proced
-drop if _merge == 2
+merge 1:1 qt_dt rssd9001 using ../temp/rssd_hh_match_proced, keep(1 3)
 gen entity_call = entity
 drop _merge
 
 *Try matching on FR-Y9C RSSID
 preserve
-merge 1:1 qt_dt entity_call using ../temp/InsuredDeposits.dta
-keep if _merge == 3
+merge 1:1 qt_dt entity_call using ../temp/InsuredDeposits.dta, keep(3)
 gen matchedon = 1
 save ../temp/y9c_callmatch, replace
 restore
@@ -346,8 +254,7 @@ restore
 *For BHCs where that didn't work, try matching based on the BHC's parent's RSSID
 preserve 
 replace entity_call = id_rssd_top
-merge m:1 qt_dt entity_call using ../temp/InsuredDeposits.dta
-keep if _merge != 2
+merge m:1 qt_dt entity_call using ../temp/InsuredDeposits.dta, keep(1 3)
 gen matchedon = 2
 replace matchedon = 3 if _merge == 1
 append using ../temp/y9c_callmatch
@@ -360,8 +267,8 @@ sort qt_dt entity matchedon
 by qt_dt entity: keep if _n == 1
 
 *Add up deposit variables, subtract out our Call report estimates of INSURED deposits
-gen tot_depos 	= BHCB2210 + BHCB3187 + BHCB2389 + BHCBHK29 + BHCBJ474
-replace tot_depos = BHCB2210 + BHCB3187 + BHCB2389 + BHCB6648 + BHCB2604 if yyyyq < 201700
+gen tot_depos			= BHCB2210 + BHCB3187 + BHCB2389 + BHCBHK29 + BHCBJ474
+replace tot_depos		= BHCB2210 + BHCB3187 + BHCB2389 + BHCB6648 + BHCB2604 if yyyyq < 201700
 	/*BHCB6648 and BHCB2604 ended 2016Q4 - these variables were time deposits of more (less) than 100k, 
 	  so these two can just be treated as total time deposits. After 2016Q4 time deposits of more(less)
 	  than 250k are available and therefore ~should~ perfectly replace the variables					*/
@@ -371,10 +278,10 @@ sort entity qt_dt
 *Tally up FDIC-insured deposits. Categorize the rest of FR-Y9C deposits from BHC as 
 *	uninsured. If strange things happen, make sure uninsured deposits between 0 and sum of
 *	all deposits.
-gen no_call = 0
-replace no_call = 1 if (tot_insur_depos < 0 | missing(tot_insur_depos)) & (entity != 1132449)
-replace tot_insur_depos = 0 if (tot_insur_depos < 0 | missing(tot_insur_depos)) & (entity != 1132449)
-gen tot_uninsur_depos_y9c = tot_depos - tot_insur_depos
+gen no_call						= 0
+replace no_call					= 1 if (tot_insur_depos < 0 | missing(tot_insur_depos)) & (entity != 1132449)
+replace tot_insur_depos			= 0 if (tot_insur_depos < 0 | missing(tot_insur_depos)) & (entity != 1132449)
+gen tot_uninsur_depos_y9c		= tot_depos - tot_insur_depos
 
 preserve
 keep if tot_uninsur_depos_y9c < 0
