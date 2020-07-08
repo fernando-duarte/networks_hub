@@ -76,3 +76,22 @@ SAN/input/SIFMA 17 Q4.xls
 SAN/input/SIFMA early_years.xlsx
 
 SAN/input/Y15.xlsx
+
+
+SAN/output/*.png
+
+SAN/temp/*
+
+SAN/output/*.tex
+
+SAN/output/*.dta
+
+*._*
+
+*.#*
+
+*DS_Store*
+
+SAN/input/FOCUS
+
+*.pdf
