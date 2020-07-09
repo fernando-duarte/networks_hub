@@ -37,12 +37,12 @@ merge 1:m mkmv_id using ../temp/DFS.dta
 
 //merge 1:m mkmv_id using ../temp/DFS_nodrop.dta
 keep if mkmvind_name_desc == "SECURITY BROKERS & DEALERS" | mkmvind_name_desc == "INVESTMENT MANAGEMENT" ///
-  | mkmvind_name_desc == "INSURANCE - LIFE" | mkmvind_name_desc == "INSURANCE - PROP/CAS/HEALTH" | mkmvind_name_desc == "REAL ESTATE INVESTMENT TRUSTS" | mkmvind_name_desc == "FINANCE NEC" | mkmvind_name_desc == "FINANCE COMPANIES"
+  | mkmvind_name_desc == "INSURANCE - LIFE" | mkmvind_name_desc == "INSURANCE - PROP/CAS/HEALTH" | ///
+  mkmvind_name_desc == "REAL ESTATE INVESTMENT TRUSTS" | mkmvind_name_desc == "FINANCE NEC" | mkmvind_name_desc == "FINANCE COMPANIES"
 keep if _merge == 3
 
 drop _merge
 merge 1:1 mkmv_id qt_dt using ../temp/DFS8.dta
-
 keep if _merge == 3 | _merge == 1
 drop _merge
 *Only concerned with American companies

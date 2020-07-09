@@ -121,7 +121,6 @@ restore
 drop _merge
 
 
-/* if $output_simulation_data == 0{ */
 *Comment out this next portion if we don't want the aggregate nodes
 merge 1:1 qt_dt mkmv_id using ../temp/broker_nodes_list_config$bd_config
 drop if _merge == 2
@@ -299,12 +298,10 @@ gen contag_index = beta*c //Duarte Jones Contagion index = w*beta*lambda
 gen gamma_max = (1/beta_max_1)-1
 
 *Run sum stats now, before things get more complicated 
-/* if $output_simulation_data == 0{ */
 preserve
 drop if inlist(tkr, "BRO10", "BRO25")
 do ../code/sum_stats_wholesample.do
 restore
-/* } */
 
 ***************************************************************************************************
 *
@@ -515,37 +512,33 @@ foreach var of varlist y_15_intra_deposits RISKY833 RISKM365 RISKM366 RISKM367 R
 	local perc_plot_y15 `perc_plot_y15' `var'
 }
 
-/* if $output_simulation_data == 0{ */
-	*Output large dataset. Will be used for Plots_Appendix, and general exploratory work.
-	save ../output/Contagion_Data, replace
+*Output large dataset. Will be used for Plots_Appendix, and general exploratory work.
+save ../output/Contagion_Data, replace
 
+*Output smaller dataset with only those variables need for Plots_Paper
+preserve
 
-	*Output smaller dataset with only those variables need for Plots_Paper
-	preserve
+keep qt_dt name nm_short tkr entity keep_obs beta w c assets lambda delta delta_neut delta_c ///
+	sum_c sum_assets sum_delta_c max_bank beta_max_1 beta_max_all_1 beta_max_fullsample_1 ///
+	max_bank_fullsample max_bank_all contag_index nvi_benchmark perc_in_insurance total_insurance ///
+	delta_insurance total_dealer delta_dealer coverage_insurance max_bank_bhc ///
+	coverage_dealer coverage_bhc BHCK2170 agg_loss connectivity_comp index_w_ff_gam1 ///
+	index_w_ff_gam5 index_w_ff_gam10 index_w_ff_gam15 index_w_ff_gam30 index_wffunds_unc_30perc ///
+	index_wffunds_unc_50perc index_wffunds_unc_70perc index_wffunds_unc_depos_20in index_wffunds_unc_depos_40in ///
+	index_wffunds_unc_depos_60in index_wffunds_unc_depos_80in index_w_ff_beta_all1 index_w_ff_beta_full1 ///
+	delta_insurance delta_dealer avg_delta_assets nvi_benchmark_full coverage_reit delta_reit coverage_included coverage_possible coverage_sectors ///
+	coverage_other delta_other *_orig assets_kmv_* bhc_ffunds total_financial_ours nvi_y15_only nvi_benchmark_y15cov nvi_y15_only_wconnect max_bank_y15 ///
+	index_wffunds_unc_depos_20in nvi_benchmark_y15depos max_bank_y15depos nvi_offbalance max_bank_offbalance index_w_ff_beta2 index_w_ff_beta3 index_w_ff_beta_all1 ///
+	beta_max_2 beta_max_3 max_bank_y15_samp contribution* index_top10_only beta_max_top10_1 max_bank_top10 weight_*
+save ../output/Contagion_Data_select, replace
 
-	keep qt_dt name nm_short tkr entity keep_obs beta w c assets lambda delta delta_neut delta_c ///
-		sum_c sum_assets sum_delta_c max_bank beta_max_1 beta_max_all_1 beta_max_fullsample_1 ///
-		max_bank_fullsample max_bank_all contag_index nvi_benchmark perc_in_insurance total_insurance ///
-		delta_insurance total_dealer delta_dealer coverage_insurance max_bank_bhc ///
-		coverage_dealer coverage_bhc BHCK2170 agg_loss connectivity_comp index_w_ff_gam1 ///
-		index_w_ff_gam5 index_w_ff_gam10 index_w_ff_gam15 index_w_ff_gam30 index_wffunds_unc_30perc ///
-		index_wffunds_unc_50perc index_wffunds_unc_70perc index_wffunds_unc_depos_20in index_wffunds_unc_depos_40in ///
-		index_wffunds_unc_depos_60in index_wffunds_unc_depos_80in index_w_ff_beta_all1 index_w_ff_beta_full1 ///
-		delta_insurance delta_dealer avg_delta_assets nvi_benchmark_full coverage_reit delta_reit coverage_included coverage_possible coverage_sectors ///
-		coverage_other delta_other *_orig assets_kmv_* bhc_ffunds total_financial_ours nvi_y15_only nvi_benchmark_y15cov nvi_y15_only_wconnect max_bank_y15 ///
-		index_wffunds_unc_depos_20in nvi_benchmark_y15depos max_bank_y15depos nvi_offbalance max_bank_offbalance index_w_ff_beta2 index_w_ff_beta3 index_w_ff_beta_all1 ///
-		beta_max_2 beta_max_3 max_bank_y15_samp contribution* index_top10_only beta_max_top10_1 max_bank_top10 weight_*
-	save ../output/Contagion_Data_select, replace
-
-	restore
-/* } */
+restore
 ***************************************************************************************************
 *
 *			Putting into excel file for simulations
 *
 ***************************************************************************************************
 
-/* if $output_simulation_data == 1{ */
 preserve
 format qt_dt %8.0g
 tempvar temp
@@ -565,52 +558,3 @@ foreach var in $simulation_data_vars{
 }
 export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("BHCs", replace) firstrow(variables)
 restore
-
-gen p_bar = .
-gen b = .
-local insurance_name "Insurance Aggregate"
-local reit_name "REIT Aggregate"
-local other_name "Other Aggregate"
-
-local insurance_tkr "INSUR"
-local reit_tkr "REIT"
-local other_tkr "OTHER"
-tempfile temp
-
-levelsof qt_dt, local(qt) clean
-foreach qt in `qt'{
-preserve
-keep if qt_dt == `qt'
-keep if _n == 1
-expand 4 if _n == 1
-local row  2
-foreach sec in insurance reit other{
-	replace nm_short = "``sec'_name'" if _n == `row'
-	replace tkr = "``sec'_tkr'" if _n == `row'
-	replace c = (1-perc_in_`sec')*total_`sec' if _n == `row'
-	replace p_bar = liab_total_`sec' if _n == `row'
-	replace assets = total_`sec' if _n == `row'
-	replace delta = delta_`sec' if _n == `row'
-	replace w = total_`sec' - liab_total_`sec' if _n == `row'
-	replace beta = . if _n == `row'
-	replace b = . if _n == `row'
-	local row = `row' + 1	
-}
-	drop if _n == 1
-	/* keep qt_dt nm_short tkr c p_bar assets delta w beta b */
-	capture append using `temp'
-	save `temp', replace
-restore
-}
-use `temp', clear
-format qt_dt %8.0g
-foreach var in $simulation_data_vars{
-	capture confirm variable `var', exact
-	disp _rc
-	if _rc != 0{
-		gen `var' = .
-		}
-}
-
-export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all.xls, sheet("Approx Aggregates", replace) firstrow(variables)
-/* } */
