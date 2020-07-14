@@ -60,7 +60,7 @@ for j in ['asset', 'liab']:
 	txt_out = re.sub(r'&\\multicolumn\{1', r'\\multicolumn{2', txt_out)
 
 	txt_in = re.sub(r'BHC(.*?)Financial(.*?)\}', r'\\begin{tabular}{@{}c@{}}BHC\1\\\\Financial\2\\end{tabular}} ', txt_in)
-	txt_out = re.sub(r'BHC(.*?)Financial(.*?)\}', r'\\begin{tabular}{@{}c@{}}BHC\1\\\\Financial\2\\end{tabular}} ', txt_out)	
+	txt_out = re.sub(r'BHC(.*?)Financial(.*?)\}', r'\\begin{tabular}{@{}c@{}}BHC\1\\\\Financial\2\\end{tabular}} ', txt_out)
 
 	txt_in = re.sub(r'\\bottomrule', r'', txt_in)
 	txt_out = re.sub(r'\\bottomrule', r'', txt_out)
@@ -74,13 +74,13 @@ for j in ['asset', 'liab']:
 
 
 	f= open('../output/' + j + '_out_formatted.tex', 'wb')
-	f.write(txt_out) 
+	f.write(txt_out)
 	f.close()
 """
 
 #Compustat samples stuff
 headers = {'dealers' : 'Security Broker and Dealer', 'insurance' : 'Insurance Company', 'reit': 'Real Estate Investment Trust', 'other': 'Other Financial Firm', 'dealers_top10': 'Top 10 Dealers by Assets', 'dealers_top25': 'Top 11-25 Dealers by Assets'}
-for tag in ['dealers', 'insurance', 'reit', 'other', 'dealers_top10', 'dealers_top25']:
+for tag in ['insurance', 'reit', 'other', 'dealers_top10', 'dealers_top25']:
 	curr = open('../output/' + tag + '_sample.tex', 'rb').read()
 	curr = re.sub(r'\\begin{table.*\\begin{tabular', r'\\begin{tabular', curr, flags=re.DOTALL)
 	curr = re.sub(r'\\end{tabular}.*\\end{table}.*', r'\\end{tabular}', curr, flags=re.DOTALL)
@@ -119,11 +119,11 @@ f.close()
 
 
 f= open('../output/insurance.tex', 'wb')
-f.write(insurance) 
+f.write(insurance)
 f.close()
 
 f= open('../output/reit.tex', 'wb')
-f.write(reits) 
+f.write(reits)
 f.close()
 """
 keys = {'insurance': 'INSURANCE', 'dealer': 'DEALERS', 'reit': 'REIT', 'credit_union': 'CREDIT UNIONS', 'finance': 'FINANCE COMPANIES', 'funding': 'FUNDING CORPORATIONS', 'abs': 'ABS ISSUERS', 'dealertop25': 'DEALERS25'}

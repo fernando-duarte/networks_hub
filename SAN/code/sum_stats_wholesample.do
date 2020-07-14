@@ -100,10 +100,10 @@ label var help_asset_in_loans "Loans"
 
 gen help_asset_in_other = BHCK2130 + .5 * (BHCK5507 + BHCK6438 + BHCKA519 + BHCKA520 + BHCKB026 + ///
 	BHCKB556 + BHCKK201 + BHCKK202 + BHCKK270 + BHCK2168)
-	
+
 gen help_asset_in_misctrade = .5 * BHCM3541
 label var help_asset_in_misctrade "Other Trading Assets"
-	
+
 gen help_asset_in_goodwill = .5 * BHCK3163
 label var help_asset_in_goodwill "Goodwill"
 
@@ -124,7 +124,7 @@ label var help_asset_in_priv_lab_mbs "Private Label MBS"
 
 gen help_asset_in_repo_ffunds = BHCKB989 + BHDMB987
 label var help_asset_in_repo_ffunds "Repos and Fed Funds"
-	
+
 gen help_asset_out_agencymbs = BHCKG300 + BHCKG303 + BHCKG304 + BHCKG307 + BHCKG312 + BHCKG315 + BHCKG379 + BHCKG380 + ///
 	BHCKK142 + BHCKK145 + BHCKK150 + BHCKK153 + BHCKK197 + .5*BHCKG316 + .5*BHCKG319
 label var help_asset_out_agencymbs "Agency MBS"
@@ -280,7 +280,7 @@ gsort sector -weight tkr, gen(`sorter')
 replace company_name = subinstr(company_name, "&", "", 10)
 
 drop nm_short
-rename company_name nm_short 
+rename company_name nm_short
 rename total_liabilities_amt p_bar
 rename total_assets_current_amt assets
 rename edf01 delta
@@ -302,7 +302,7 @@ foreach sec in `sectors'{
 	/* keep if weight > 0 */
 	/* keep company_name tkr total_assets_current_amt edf01 edf01_mean total_liabilities_amt qt_dt */
 	export excel $simulation_data_vars using ../temp/node_stats_forsimulation_all if sector == "`sec'" & weight > 0, ///
-	  sheet("`sec'", replace) firstrow(variables) 
+	  sheet("`sec'", replace) firstrow(variables)
 }
 
 keep if qt_dt == $snapshot_date
@@ -323,10 +323,6 @@ replace sorter = 1000 if nm_short == "Number of Firms in Sample"
 replace sorter = 1001 if nm_short == "Weighting from Rest of Sample"
 drop if nm_short == "Weighting from Rest of Sample" & inlist(sector, "Top 10 Dealers", "Top 11-25 Dealers")
 labmask sorter, values(nm_short)
-
-
-estpost tabstat weight if sector == "Broker Dealers", columns(statistics) by(sorter) nototal
-esttab using ../output/dealers_sample.tex, coeflabels(`e(labels)') main(mean 2) booktabs nonum replace title(" ") mtitle("Asset Weighting") noobs nonotes not
 
 estpost tabstat weight if sector == "Insurance", columns(statistics) by(sorter) nototal
 esttab using ../output/insurance_sample.tex, coeflabels(`e(labels)') main(mean 2) booktabs nonum replace title(" ") mtitle("Asset Weighting") noobs nonotes not

@@ -3,7 +3,7 @@
 *	Network output series construcion
 *	Collin Jones and Rui Yu
 *	Purpose: Construct variables needed to recreate fields in Glasserman(2014). Subsequent do-file
-*		performs actual plotting. 
+*		performs actual plotting.
 *
 *********************************************************************************
 
@@ -64,7 +64,7 @@ replace RISKM370 = RISKM370 - (BHFN6631 + BHFN6636) if inlist(mkmv_id, "857473",
 
 /***************************************************************************
  Y15 off-balance sheet stuff
- 
+
 RISKJ458 = Assets, unused commited lines to other financial institutions
 RISKM360 = Future exposure of derivatives
 
@@ -91,7 +91,7 @@ gen beta_offbalance = ((liab_in + liab_offbalance_extrap) + (1/2)*liab_in_unc)/(
 
 *This line used to be in Analysis_Y9C. Now here instead, in case we want to hold onto Foreign BHCs. Uncomment to remove them. Note that most of them
 *	don't have KMV probabilities, so this will sort of happen later.
-*IMPORTANT: Dropping anything without a KMV default probability. 
+*IMPORTANT: Dropping anything without a KMV default probability.
 drop if FGN_CALL_FAM_ID != 0 & entity != 3232316 & entity != 1132449
 keep if !missing(prob_default_phys)
 drop if no_call == 1
@@ -139,7 +139,7 @@ gen keep_obs = 0
 format qt_dt  %tq
 drop rank
 
-*This will give us a tag of the bank in the global macro above (which is the old sample). Helpful for setting beta_max later. 
+*This will give us a tag of the bank in the global macro above (which is the old sample). Helpful for setting beta_max later.
 foreach bank of numlist $bankSample {
 	replace keep_obs = 1 if entity == `bank'
 }
@@ -241,7 +241,7 @@ bys qt_dt: egen sum_delta_neut_c 		= sum(delta_neut_c)
 ******************************************************************************************
 *
 *			Defining Beta+ and second, third, fourth, etc Betas
-*						
+*
 ******************************************************************************************
 
 *Produce ranked fractions of finacial liabilities. Benchmark only takes Beta+ from top BHCs.
@@ -251,37 +251,37 @@ foreach v in max_bank max_bank_all max_bank_fullsample max_bank_y15 max_bank_y15
 	gen `v' = .
 }
 
-gsort qt_dt -BHCK2170 
+gsort qt_dt -BHCK2170
 by qt_dt: gen rank = _n
 drop if tot_insur_depos < 0
 foreach num of numlist 1/5 {
 	bys qt_dt: egen beta_max_`num'	= max(beta) if max_bank == . & keep_obs == 1
 	replace max_bank = `num' if beta_max_`num'== beta
-	
-	bys qt_dt: egen beta_max_bhc_`num'	= max(beta) if max_bank_bhc == . & (keep_obs == 1 | !inlist(tkr, "BRO10", "BRO25")) 
+
+	bys qt_dt: egen beta_max_bhc_`num'	= max(beta) if max_bank_bhc == . & (keep_obs == 1 | !inlist(tkr, "BRO10", "BRO25"))
 	replace max_bank_bhc = `num' if beta_max_bhc_`num'== beta & missing(max_bank_bhc)
-	
-	bys qt_dt: egen beta_max_top10_`num'	= max(beta) if max_bank_top10 == . & (sim_nodes == 1) 
+
+	bys qt_dt: egen beta_max_top10_`num'	= max(beta) if max_bank_top10 == . & (sim_nodes == 1)
 	replace max_bank_top10= `num' if beta_max_top10_`num'== beta & missing(max_bank_top10)
-	
+
 	bys qt_dt: egen beta_max_y15_depos_`num' = max(beta_y15_deposits) if max_bank_y15depos == . & y15_sample == 1 & keep_obs == 1
 	replace max_bank_y15depos = `num' if beta_max_y15_depos_`num'== beta_y15_deposits
-	
+
 	bys qt_dt: egen beta_max_offbalance_`num' = max(beta_offbalance) if max_bank_offbalance == . & y15_sample == 1 & keep_obs == 1
 	replace max_bank_offbalance = `num' if beta_max_offbalance_`num'== beta_offbalance
 
 	bys qt_dt: egen beta_max_all_`num'	= max(beta) if max_bank_all == .
 	replace max_bank_all = `num' if beta_max_all_`num'== beta
-	
+
 	bys qt_dt: egen beta_max_all_nocall_`num'	= max(beta_nocall) if max_bank_nocall == .
 	replace max_bank_nocall = `num' if beta_max_all_nocall_`num'== beta_nocall
-	
+
 	bys qt_dt: egen beta_max_fullsample_`num' = max(beta) if max_bank_fullsample == . & keep_obs == 1 & full_sample == 1
 	replace max_bank_fullsample = `num' if beta_max_fullsample_`num'== beta
 
 	bys qt_dt: egen beta_max_y15_`num' = max(beta_y15) if max_bank_y15 == . & keep_obs == 1 & y15_sample == 1
 	replace max_bank_y15 = `num' if beta_max_y15_`num'== beta_y15
-	
+
 	bys qt_dt: egen beta_max_y15_samp_`num' = max(beta) if max_bank_y15_samp == . & keep_obs == 1 & y15_sample == 1
 	replace max_bank_y15_samp = `num' if beta_max_y15_samp_`num'== beta
 
@@ -293,11 +293,11 @@ foreach num of numlist 1/5 {
 
 *Create contagion index
 gen contag_index_glasserman = beta * (c - w) //Glasserman-Young Contagion index = w*beta*(lambda-1)
-gen contag_index = beta*c //Duarte Jones Contagion index = w*beta*lambda 
+gen contag_index = beta*c //Duarte Jones Contagion index = w*beta*lambda
 
 gen gamma_max = (1/beta_max_1)-1
 
-*Run sum stats now, before things get more complicated 
+*Run sum stats now, before things get more complicated
 preserve
 drop if inlist(tkr, "BRO10", "BRO25")
 do ../code/sum_stats_wholesample.do
@@ -322,7 +322,7 @@ foreach tag in insurance reit other{
 	local num `num' + (1-perc_in_`tag')*total_`tag'*delta_`tag'
 	local denom `denom' + (1-perc_in_`tag')*total_`tag'
 	gen perc_in_`tag'_temp = .
-	
+
 	local assets_to_include `assets_to_include' + assets_kmv_`tag'
 	local assets_possible `assets_possible' + total_`tag'
 	local assets_possible_orig `assets_possible_orig' + total_`tag'_orig
@@ -332,10 +332,10 @@ foreach tag in insurance reit other{
 	gen `contrib' = ((1-perc_in_`tag')*total_`tag'*delta_`tag') / ((1-(1+$gamma_benchmark/100)*beta_max_1)*(`denom'))
 	bys qt_dt: egen contribution_`tag' = max(`contrib')
 	gen weight_`tag' = ((1-perc_in_`tag')*total_`tag')/(`denom')
-	
+
 	replace `contrib' = ((1-perc_in_`tag')*(assets_kmv_`tag')*delta_`tag') / ((1-(1+$gamma_benchmark/100)*beta_max_1)*(`denom'))
 	bys qt_dt: egen contribution_kmv_`tag' = max(`contrib')
-	
+
 	replace `contrib' = ((1-perc_in_`tag')*(total_`tag' - assets_kmv_`tag')*delta_`tag') / ((1-(1+$gamma_benchmark/100)*beta_max_1)*(`denom'))
 	bys qt_dt: egen contribution_nonkmv_`tag' = max(`contrib')
 }
@@ -373,7 +373,7 @@ gen connectivity_comp = 1/(1-(1+$gamma_benchmark/100)*beta_max_1)
 ******************************************************************************************
 *
 *			Some misc stats on the Y9C sample (need Flow of Funds data to calc)
-*						
+*
 ******************************************************************************************
 
 *Coverage series for Y9C, BHC sample
@@ -424,7 +424,7 @@ foreach val of numlist 2/5{
 *Benchmark index selecting beta+ (and second, third, etc) from whole Y9C sample
 foreach val of numlist 1/5{
 	gen index_w_ff_beta_all`val'= 100*(`num')/((1-(1+$gamma_benchmark/100)*beta_max_all_`val')*(`denom'))
-	
+
 	gen index_w_ff_beta_full`val'= 100*(`num')/((1-(1+$gamma_benchmark/100)*beta_max_fullsample_`val')*(`denom'))
 }
 
@@ -438,7 +438,7 @@ foreach val in $gammas 0{
 *Index with some different Y9C "unclear" classifications
 	*Note these are percentages IN the system
 forval perc=10(10)100{
-	
+
 	//replace perc_in_dealer_temp = (temp_dealer_in + (`perc'/100) * temp_dealer_unc)/total_dealer_orig
 	replace perc_in_insurance_temp = (temp_insurance_in + (`perc'/100) * temp_insurance_unc)/total_insurance_orig
 	replace perc_in_reit_temp = (temp_reit_in + (`perc'/100) * temp_reit_unc)/total_reit_orig
@@ -452,11 +452,11 @@ forval perc=10(10)100{
 	gen delta_c_temp					= delta*c_temp
 	bys qt_dt: egen sum_delta_c_temp 	= sum(delta_c_temp)
 	bys qt_dt: egen sum_c_temp 			= sum(c_temp)
-	
+
 	gen index_wffunds_unc_`perc'perc = 100*(sum_delta_c_temp + (1-perc_in_insurance_temp)*total_insurance*delta_insurance + ///
 		(1-perc_in_reit_temp)*total_reit*delta_reit+ (1-perc_in_other_temp)*total_other*delta_other)/((1-(1+$gamma_benchmark/100)*beta_max_1_perc`perc'_actual)*(sum_c_temp+(1-perc_in_insurance_temp)*total_insurance + ///
 		(1-perc_in_reit_temp)*total_reit+ (1-perc_in_other_temp)*total_other))
-	
+
 	drop delta_c_temp sum_delta_c_temp sum_c_temp c_temp
 }
 
@@ -465,7 +465,7 @@ gen beta_temp = .
 forval perc=10(10)100{
 	replace beta_temp = ((1/2)*liab_in_unc + (`perc')/100 * tot_uninsur_depos_y9c + BHDMB993 + BHCKB995 + BHCK3548)/BHCK2948
 	bys qt_dt: egen beta_max_temp = max(beta_temp) if keep_obs == 1
-	
+
 	gen index_wffunds_unc_depos_`perc'in = 100*(`num')/((1-(1+$gamma_benchmark/100)*beta_max_temp)*(`denom'))
 
 	drop beta_max_temp
@@ -489,7 +489,7 @@ gen nvi_y15_only_wconnect = 100*(sum_delta_c_y15)/((1-(1+$gamma_benchmark/100)*b
 
 format qt_dt %tqCCYY
 
-gen liab_in_depos15 = deposits_in_extrapolated + BHDMB993 + BHCKB995 + BHCK3548 + BHCK4062 + BHCK3049 
+gen liab_in_depos15 = deposits_in_extrapolated + BHDMB993 + BHCKB995 + BHCK3548 + BHCK4062 + BHCK3049
 gen beta_depos15 = (liab_in_depos15 + (1/2)*liab_in_unc)/BHCK2948
 
 
@@ -521,12 +521,12 @@ preserve
 keep qt_dt name nm_short tkr entity keep_obs beta w c assets lambda delta delta_neut delta_c ///
 	sum_c sum_assets sum_delta_c max_bank beta_max_1 beta_max_all_1 beta_max_fullsample_1 ///
 	max_bank_fullsample max_bank_all contag_index nvi_benchmark perc_in_insurance total_insurance ///
-	delta_insurance total_dealer delta_dealer coverage_insurance max_bank_bhc ///
-	coverage_dealer coverage_bhc BHCK2170 agg_loss connectivity_comp index_w_ff_gam1 ///
+	delta_insurance total_dealer coverage_insurance max_bank_bhc ///
+	coverage_bhc BHCK2170 agg_loss connectivity_comp index_w_ff_gam1 ///
 	index_w_ff_gam5 index_w_ff_gam10 index_w_ff_gam15 index_w_ff_gam30 index_wffunds_unc_30perc ///
 	index_wffunds_unc_50perc index_wffunds_unc_70perc index_wffunds_unc_depos_20in index_wffunds_unc_depos_40in ///
 	index_wffunds_unc_depos_60in index_wffunds_unc_depos_80in index_w_ff_beta_all1 index_w_ff_beta_full1 ///
-	delta_insurance delta_dealer avg_delta_assets nvi_benchmark_full coverage_reit delta_reit coverage_included coverage_possible coverage_sectors ///
+	delta_insurance avg_delta_assets nvi_benchmark_full coverage_reit delta_reit coverage_included coverage_possible coverage_sectors ///
 	coverage_other delta_other *_orig assets_kmv_* bhc_ffunds total_financial_ours nvi_y15_only nvi_benchmark_y15cov nvi_y15_only_wconnect max_bank_y15 ///
 	index_wffunds_unc_depos_20in nvi_benchmark_y15depos max_bank_y15depos nvi_offbalance max_bank_offbalance index_w_ff_beta2 index_w_ff_beta3 index_w_ff_beta_all1 ///
 	beta_max_2 beta_max_3 max_bank_y15_samp contribution* index_top10_only beta_max_top10_1 max_bank_top10 weight_*
