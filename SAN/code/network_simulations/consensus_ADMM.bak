@@ -1,0 +1,1234 @@
+%2multibyte Version: 5.50.0.2960 CodePage: 936
+
+\documentclass{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{amsmath}
+\usepackage{amsfonts}
+
+\setcounter{MaxMatrixCols}{10}
+%TCIDATA{OutputFilter=LATEX.DLL}
+%TCIDATA{Version=5.50.0.2960}
+%TCIDATA{Codepage=936}
+%TCIDATA{<META NAME="SaveForMode" CONTENT="1">}
+%TCIDATA{BibliographyScheme=Manual}
+%TCIDATA{Created=Thursday, July 30, 2020 19:39:05}
+%TCIDATA{LastRevised=Tuesday, August 11, 2020 21:05:51}
+%TCIDATA{<META NAME="GraphicsSave" CONTENT="32">}
+%TCIDATA{<META NAME="DocumentShell" CONTENT="Standard LaTeX\Blank - Standard LaTeX Article">}
+%TCIDATA{CSTFile=40 LaTeX article.cst}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+\input{tcilatex}
+\begin{document}
+
+
+The goal is to solve%
+\begin{eqnarray*}
+&&\max_{A,b,c,p}L \\
+L &\equiv &\int \left( \left\vert x\right\vert +P\right) dF\left( x\right) \\
+\left\vert x\right\vert &\equiv &\sum_{i=1}^{N}x_{i} \\
+P &\equiv &\sum_{i=1}^{N}\left( \bar{p}_{i}-p_{i}\right)
+\end{eqnarray*}%
+subject to
+
+\begin{enumerate}
+\item \textquotedblleft Box\textquotedblright\ or bound constraints%
+\begin{eqnarray*}
+0 &\leq &p_{i}\leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &c_{i}\leq assets_{i}\text{, }i=1,..,N \\
+0 &\leq &b_{i}\leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &a_{ij}\leq 1\text{, }i,j=1,..,N
+\end{eqnarray*}
+
+\item Linear constraints%
+\begin{eqnarray*}
+\bar{p}_{i}\sum_{j=1}^{N}a_{ij} &=&\bar{p}_{i}-b_{i}\text{, }i=1,..,N \\
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j} &=&assets_{i}-c_{i}\text{, }i=1,..,N
+\end{eqnarray*}%
+or in vector form%
+\begin{eqnarray*}
+b-\bar{p}+\bar{p}^{T}A1_{N} &=&0 \\
+c-assets+A^{T}\bar{p} &=&0
+\end{eqnarray*}
+
+\item Complementarity constraints%
+\begin{equation*}
+a_{ij}a_{ji}=0\text{ for }i,j=1...,N
+\end{equation*}%
+which can be equivalently expressed in any of the following ways
+
+\begin{enumerate}
+\item Single complementarity constraint%
+\begin{equation*}
+\text{ }\sum_{i=1}^{N}\sum_{j\leq i}a_{ij}a_{ji}=0
+\end{equation*}
+
+\item Matrix constraint%
+\begin{equation*}
+sum\left\{ LowerTriangular(A).\ast LowerTriangular(A^{T})\right\} =0
+\end{equation*}
+
+\item Indefinite quadratic form%
+\begin{equation*}
+vec\left( A\right) ^{T}Hvec\left( A\right) =0\text{ for an indefinite matrix 
+}H
+\end{equation*}
+
+\item $L_{0}$ pseudo-norm%
+\begin{eqnarray*}
+nnz\left( \left[ a_{ij},a_{ji}\right] \right) &\leq &1\text{ for }i=1...,N%
+\text{ and }j<i \\
+nnz\left( \left[ a_{ij},a_{ji}\right] \right) &\leq &0\text{ for }i=1...,N%
+\text{ and }j=i
+\end{eqnarray*}%
+where the $L_{0}$ pseudo-norm $nnz\left( \cdot \right) $ gives the number of
+of non-zeros of its input
+\end{enumerate}
+
+\item Non-linear constraints%
+\begin{equation*}
+p=\min \left\{ \bar{p},\max \left\{ \left( 1+\gamma \right) \left(
+A^{T}p+c-diag\left( x\right) c\right) -\gamma \bar{p},0\right\} \right\}
+\end{equation*}
+\end{enumerate}
+
+\section{Matrix Form}
+
+Let%
+\begin{eqnarray*}
+\underset{N^{2}\times 1}{z_{1}} &:&=vec\left( \underset{N\times N}{A}\right) 
+\\
+\underset{N\times 1}{z_{2}} &:&=b \\
+\underset{N\times 1}{z_{3}} &:&=c \\
+\underset{N\times 1}{z_{4}} &:&=p \\
+\underset{M\times 1}{z} &:&=\left[ 
+\begin{array}{cccc}
+z_{1}^{T} & z_{2}^{T} & z_{3}^{T} & z_{4}^{T}%
+\end{array}%
+\right] ^{T} \\
+M &=&N^{2}+3N
+\end{eqnarray*}%
+\begin{eqnarray*}
+low &=&\left[ 
+\begin{array}{cccc}
+0_{N^{2}\times 1}^{T} & 0_{N\times 1}^{T} & 0_{N\times 1}^{T} & 0_{N\times
+1}^{T}%
+\end{array}%
+\right] ^{T} \\
+upp &=&\left[ 
+\begin{array}{cccc}
+1_{N^{2}\times 1}^{T} & \bar{p}^{T} & assets^{T} & \bar{p}^{T}%
+\end{array}%
+\right] ^{T}
+\end{eqnarray*}%
+\begin{eqnarray*}
+A^{T}\bar{p}+c &=&assets \\
+\underset{M\times M}{H_{1}} &=&0_{M\times M} \\
+\underset{N\times N^{2}}{h_{1,1}^{T}} &=&\left[ 
+\begin{array}{ccccccccc}
+p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & p_{1} & p_{2} & p_{3}%
+\end{array}%
+\right] =I_{N}\otimes \bar{p}^{T} \\
+\underset{N\times M}{h_{1}^{T}} &=&\left[ 
+\begin{array}{cccc}
+\underset{N\times N^{2}}{h_{1,1}^{T}} & 0_{N\times N} & I_{N} & 0_{N\times N}%
+\end{array}%
+\right]  \\
+\underset{N\times 1}{q_{1}} &=&assets \\
+h_{1}^{T}z &=&q_{1}
+\end{eqnarray*}%
+\begin{eqnarray*}
+\bar{p}^{T}A1_{N}+b &=&\bar{p} \\
+\underset{M\times M}{H_{2}} &=&0_{M\times M} \\
+\underset{N\times N^{2}}{h_{2,1}^{T}} &=&%
+\begin{array}{ccccccccc}
+p_{1} & 0 & 0 & p_{1} & 0 & 0 & p_{1} & 0 & 0 \\ 
+0 & p_{2} & 0 & 0 & p_{2} & 0 & 0 & p_{2} & 0 \\ 
+0 & 0 & p_{3} & 0 & 0 & p_{3} & 0 & 0 & p_{3}%
+\end{array}%
+=repmat(diag(\bar{p}),1,N) \\
+\underset{N\times M}{h_{2}^{T}} &=&\left[ 
+\begin{array}{cccc}
+\underset{N\times N^{2}}{h_{2,1}^{T}} & I_{N} & 0_{N\times N} & 0_{N\times N}%
+\end{array}%
+\right]  \\
+\underset{N\times 1}{q_{2}} &=&\bar{p} \\
+h_{2}^{T}z &=&q_{2}
+\end{eqnarray*}%
+\begin{eqnarray*}
+\underset{N^{2}\times N^{2}}{H_{3,1,1}} &=&%
+\begin{array}{ccccccccc}
+2 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\ 
+0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 2 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\ 
+0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 2%
+\end{array}
+\\
+\underset{M\times M}{H_{3}} &=&\left[ 
+\begin{array}{cccc}
+\underset{N^{2}\times N^{2}}{\frac{1}{2}H_{0,1,1}} & 0_{N^{2}\times N} & 
+0_{N^{2}\times N} & 0_{N^{2}\times N} \\ 
+0_{N\times N^{2}} & 0_{N\times N} & 0_{N\times N} & 0_{N\times N} \\ 
+0_{N\times N^{2}} & 0_{N\times N} & 0_{N\times N} & 0_{N\times N} \\ 
+0_{N\times N^{2}} & 0_{N\times N} & 0_{N\times N} & 0_{N\times N}%
+\end{array}%
+\right]  \\
+h_{3} &=&0_{M\times 1} \\
+q_{3} &=&0 \\
+z^{T}H_{3}z+h_{3}^{T}z &=&q_{3}
+\end{eqnarray*}%
+\begin{eqnarray*}
+&&\min \left\{ \bar{p},\max \left\{ \left( 1+\gamma \right) \left(
+A^{T}p+\left( c-diag\left( x\right) c\right) \right) -\gamma \bar{p}%
+,0\right\} \right\}  \\
+H_{4,1,4}^{\left( i\right) } &=&-\left( 1+\gamma \right) \left( \underset{%
+N^{2}\times N}{e_{i}^{T}\otimes I_{N}}\right)  \\
+\underset{M\times M}{H_{4}^{\left( i\right) }} &=&\left[ 
+\begin{array}{cccc}
+0_{N^{2}\times N^{2}} & 0_{N^{2}\times N} & 0_{N^{2}\times N} & \underset{%
+N^{2}\times N}{\frac{1}{2}H_{4,1,4}^{\left( i\right) }} \\ 
+0_{N\times N^{2}} & 0_{N\times N} & 0_{N\times N} & 0_{N\times N} \\ 
+0_{N\times N^{2}} & 0_{N\times N} & 0_{N\times N} & 0_{N\times N} \\ 
+\underset{N\times N^{2}}{\frac{1}{2}\left[ H_{4,1,4}^{\left( i\right) }%
+\right] ^{T}} & 0_{N\times N} & 0_{N\times N} & 0_{N\times N}%
+\end{array}%
+\right]  \\
+\left[ h_{4,3}^{\left( i\right) }\right] ^{T} &=&\left( 1+\gamma \right)
+\left( 1-x_{i}\right) e_{i}^{T} \\
+\underset{1\times M}{\left[ h_{4}^{\left( i\right) }\right] ^{T}} &=&\left[ 
+\begin{array}{cccc}
+0_{1\times N^{2}} & 0_{1\times N} & \underset{1\times N}{\left[
+h_{4,3}^{\left( i\right) }\right] ^{T}} & 0_{1\times N}%
+\end{array}%
+\right]  \\
+\underset{1\times M}{\left[ h_{4,4}^{\left( i\right) }\right] ^{T}} &=&\left[
+\begin{array}{cccc}
+0_{1\times N^{2}} & 0_{1\times N} & 0_{1\times N} & \underset{1\times N}{%
+e_{i}^{T}}%
+\end{array}%
+\right]  \\
+q_{4}^{\left( i\right) } &=&\gamma \bar{p}_{i} \\
+\left[ h_{4,4}^{\left( i\right) }\right] ^{T}z &=&\min \left\{ \bar{p}%
+_{i},z^{T}\left[ -H_{4}^{\left( i\right) }\right] z+\left[ h_{4}^{\left(
+i\right) }\right] ^{T}z+q_{4}^{\left( i\right) }\right\} \text{ for }%
+i=1,...,N \\
+\left[ h^{\left( i\right) }\right] ^{T} &=&\left[ -h_{4}^{\left( i\right) }%
+\right] ^{T}+\left[ -h_{4,4}^{\left( i\right) }\right] ^{T}
+\end{eqnarray*}%
+\begin{equation*}
+h_{0}^{T}=\left[ 
+\begin{array}{cccc}
+0_{1\times N^{2}} & 0_{1\times N} & 0_{1\times N} & 1_{1\times N}%
+\end{array}%
+\right] 
+\end{equation*}%
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\max_{A,b,c,p}E\left[ \sum_{i=1}^{N}x_{i}+\sum_{i=1}^{N}\left( \bar{p}%
+_{i}-p_{i}\right) \right]  \\
+low &\leq &z\leq upp \\
+h_{1}^{T}z &=&q_{1} \\
+h_{2}^{T}z &=&q_{2} \\
+z^{T}H_{3}z &=&q_{3} \\
+\left[ h_{4,4}^{\left( i\right) }\right] ^{T}z &=&\min \left\{ \bar{p}%
+_{i},z^{T}\left[ -H_{4}^{\left( i\right) }\right] z+\left[ h_{4}^{\left(
+i\right) }\right] ^{T}z-q_{4}^{\left( i\right) }\right\} \text{ for }%
+i=1,...,N
+\end{eqnarray*}%
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\min_{z}E\left[ \sum_{i=1}^{N}p_{i}-\sum_{i=1}^{N}\left( \bar{p}%
+_{i}+x_{i}\right) \right]  \\
+low &\leq &z\leq upp \\
+h_{1}^{T}z &=&q_{1} \\
+h_{2}^{T}z &=&q_{2} \\
+z^{T}H_{3}z &=&q_{3} \\
+\left[ -h_{4,4}^{\left( i\right) }\right] ^{T}z &=&\max \left\{ -\bar{p}%
+_{i},z^{T}H_{4}^{\left( i\right) }z+\left[ -h_{4}^{\left( i\right) }\right]
+^{T}z-q_{4}^{\left( i\right) }\right\} \text{ for }i=1,...,N \\
+-\bar{p}_{i} &\leq &p_{i} \\
+z^{T}H_{4}^{\left( i\right) }z+\left[ -h_{4}^{\left( i\right) }\right]
+^{T}z-q_{4}^{\left( i\right) } &\leq &p_{i}
+\end{eqnarray*}%
+\begin{eqnarray*}
+\text{Maximize spillovers } &\text{:}& \\
+&&\min_{z}E\left[ h_{0}^{T}z\right] -E\sum_{i=1}^{N}\left( \bar{p}%
+_{i}+x_{i}\right)  \\
+low &\leq &z\leq upp \\
+h_{1}^{T}z &=&q_{1} \\
+h_{2}^{T}z &=&q_{2} \\
+z^{T}H_{3}z &=&q_{3} \\
+0 &\geq &z^{T}H_{4}^{\left( i\right) }z+\left( \left[ -h_{4}^{\left(
+i\right) }\right] ^{T}+\left[ -h_{4,4}^{\left( i\right) }\right] ^{T}\right)
+z-q_{4}^{\left( i\right) } \\
+&&\text{(is this a relaxation or equivalent?)}
+\end{eqnarray*}%
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\min_{z}E\left[ h_{0}^{T}z\right] -E\sum_{i=1}^{N}\left( \bar{p}%
+_{i}+x_{i}\right)  \\
+low &\leq &z\leq upp \\
+h_{1}^{T}z &=&q_{1} \\
+h_{2}^{T}z &=&q_{2} \\
+z^{T}H_{3}z &=&q_{3} \\
+z^{T}H_{4}^{\left( i\right) }z+\left[ h^{\left( i\right) }\right] ^{T}z
+&\leq &q_{4}^{\left( i\right) }
+\end{eqnarray*}%
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\min_{z}E\left[ h_{0}^{T}z\right] -E\sum_{i=1}^{N}\left( \bar{p}%
+_{i}+x_{i}\right)  \\
+low &\leq &z\leq upp \\
+h_{1}^{T}z &=&q_{1} \\
+h_{2}^{T}z &=&q_{2} \\
+trace\left( H_{3}Z\right)  &=&q_{3} \\
+trace\left( H_{4}^{\left( i\right) }Z\right) +\left[ h^{\left( i\right) }%
+\right] ^{T}z &\leq &q_{4}^{\left( i\right) } \\
+Z &=&zz^{T}
+\end{eqnarray*}%
+and we also know that%
+\begin{eqnarray*}
+Z &=&zz^{T}\iff \left( Z\succeq zz^{T}\text{ and }rank\left( \left[ 
+\begin{array}{cc}
+Z & z \\ 
+z^{T} & 1%
+\end{array}%
+\right] \right) =1\right)  \\
+\left[ 
+\begin{array}{cc}
+Z & z \\ 
+z^{T} & 1%
+\end{array}%
+\right]  &\succeq &0\iff Z\succeq zz^{T}
+\end{eqnarray*}
+
+Shor's relaxation%
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\min_{z,Z}E\left[ h_{0}^{T}z\right] -E\sum_{i=1}^{N}\left( \bar{p}%
+_{i}+x_{i}\right) \\
+low &\leq &z\leq upp \\
+h_{1}^{T}z &=&q_{1} \\
+h_{2}^{T}z &=&q_{2} \\
+trace\left( H_{3}Z\right) &=&q_{3} \\
+trace\left( H_{4}^{\left( i\right) }Z\right) +\left[ h^{\left( i\right) }%
+\right] ^{T}z &\leq &q_{4}^{\left( i\right) } \\
+\left[ 
+\begin{array}{cc}
+Z & z \\ 
+z^{T} & 1%
+\end{array}%
+\right] &\succeq &0
+\end{eqnarray*}
+
+Homogenize. Let%
+\begin{equation*}
+\tilde{z}=\left[ 
+\begin{array}{c}
+z \\ 
+t%
+\end{array}%
+\right]
+\end{equation*}
+
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\min_{\tilde{z}}E\left[ \tilde{z}^{T}\left[ 
+\begin{array}{cc}
+0 & h_{0} \\ 
+h_{0}^{T} & 0%
+\end{array}%
+\right] \tilde{z}\right] -E\sum_{i=1}^{N}\left( \bar{p}_{i}+x_{i}\right)  \\
+low &\leq &z\leq upp \\
+\tilde{z}^{T}\left[ 
+\begin{array}{cc}
+0 & h_{1} \\ 
+h_{1}^{T} & 0%
+\end{array}%
+\right] \tilde{z} &=&q_{1} \\
+\tilde{z}^{T}\left[ 
+\begin{array}{cc}
+0 & h_{2} \\ 
+h_{2}^{T} & 0%
+\end{array}%
+\right] \tilde{z} &=&q_{2} \\
+\tilde{z}^{T}\left[ 
+\begin{array}{cc}
+H_{3} & 0 \\ 
+0 & 0%
+\end{array}%
+\right] \tilde{z} &=&q_{3} \\
+\tilde{z}^{T}\left[ 
+\begin{array}{cc}
+H_{4}^{\left( i\right) } & \left[ \frac{1}{2}h^{\left( i\right) }\right]  \\ 
+\left[ \frac{1}{2}h^{\left( i\right) }\right] ^{T} & 0%
+\end{array}%
+\right] \tilde{z} &\leq &q_{4}^{\left( i\right) } \\
+t^{2} &=&1
+\end{eqnarray*}%
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\min_{Z}E\left[ tr\left( \left[ 
+\begin{array}{cc}
+0 & h_{0} \\ 
+h_{0}^{T} & 0%
+\end{array}%
+\right] Z\right) \right] -E\sum_{i=1}^{N}\left( \bar{p}_{i}+x_{i}\right)  \\
+low &\leq &z \\
+z &\leq &upp \\
+tr\left( \left[ 
+\begin{array}{cc}
+0 & \frac{1}{2}h_{1}^{\left( \func{col}i\right) } \\ 
+\frac{1}{2}\left[ h_{1}^{\left( \func{col}i\right) }\right] ^{T} & 0%
+\end{array}%
+\right] Z\right)  &=&q_{1}^{\left( i\right) }\text{ where }h_{1}^{\left( 
+\func{col}i\right) }\text{ is }i^{th}\text{ column of }h_{1}\text{ } \\
+&&\text{and }\left[ h_{1}^{T}\right] ^{\left( \func{row}i\right) }\text{ is }%
+i^{th}\text{ row of }h_{1}^{T} \\
+tr\left( \left[ 
+\begin{array}{cc}
+0 & \frac{1}{2}h_{2}^{\left( \func{col}i\right) } \\ 
+\frac{1}{2}\left[ h_{2}^{\left( \func{col}i\right) }\right] ^{T} & 0%
+\end{array}%
+\right] Z\right)  &=&q_{2}^{\left( i\right) }\text{ where }h_{2}^{\left( 
+\func{col}i\right) }\text{ is }i^{th}\text{ column of }h_{2} \\
+&&\text{and }\left[ h_{2}^{T}\right] ^{\left( \func{row}i\right) }\text{ is }%
+i^{th}\text{ row of }h_{2}^{T} \\
+tr\left( \left[ 
+\begin{array}{cc}
+H_{3} & 0 \\ 
+0 & 0%
+\end{array}%
+\right] Z\right)  &=&q_{3} \\
+tr\left( \left[ 
+\begin{array}{cc}
+H_{4}^{\left( i\right) } & \left[ \frac{1}{2}h^{\left( i\right) }\right]  \\ 
+\left[ \frac{1}{2}h^{\left( i\right) }\right] ^{T} & 0%
+\end{array}%
+\right] Z\right)  &\leq &q_{4}^{\left( i\right) } \\
+t^{2} &=&1 \\
+Z &=&\tilde{z}\tilde{z}^{T}\iff \left[ Z\succeq 0\text{ and }rank\left(
+Z\right) =1\right] 
+\end{eqnarray*}%
+\begin{eqnarray*}
+z\text{ from }Z &=&\sqrt{\lambda _{1}}q_{1} \\
+&&\lambda _{1},q_{1}\text{ first eigen-value/vector}
+\end{eqnarray*}
+
+\section{ADMM}
+
+\begin{eqnarray*}
+Q_{0} &=&\left[ 
+\begin{array}{cc}
+0 & h_{0} \\ 
+h_{0}^{T} & 0%
+\end{array}%
+\right]  \\
+Q_{1}^{\left( i\right) } &=&\left[ 
+\begin{array}{cc}
+0 & \frac{1}{2}h_{1}^{\left( \func{col}i\right) } \\ 
+\frac{1}{2}\left[ h_{1}^{\left( \func{col}i\right) }\right] ^{T} & 0%
+\end{array}%
+\right]  \\
+Q_{2}^{\left( i\right) } &=&\left[ 
+\begin{array}{cc}
+0 & \frac{1}{2}h_{2}^{\left( \func{col}i\right) } \\ 
+\frac{1}{2}\left[ h_{2}^{\left( \func{col}i\right) }\right] ^{T} & 0%
+\end{array}%
+\right]  \\
+Q_{3} &=&\left[ 
+\begin{array}{cc}
+H_{3} & 0 \\ 
+0 & 0%
+\end{array}%
+\right]  \\
+Q_{4}^{\left( i\right) } &=&\left[ 
+\begin{array}{cc}
+H_{4}^{\left( i\right) } & \left[ \frac{1}{2}h^{\left( i\right) }\right]  \\ 
+\left[ \frac{1}{2}h^{\left( i\right) }\right] ^{T} & 0%
+\end{array}%
+\right] 
+\end{eqnarray*}%
+\begin{eqnarray*}
+\text{Maximize spillovers} &\text{:}& \\
+&&\min_{Z}E\left[ tr\left( Q_{0}Z\right) \right] -E\sum_{i=1}^{N}\left( \bar{%
+p}_{i}+x_{i}\right)  \\
+low &\leq &z \\
+z &\leq &upp \\
+tr\left( ZQ_{1}^{\left( i\right) }\right)  &=&q_{1}^{\left( i\right) } \\
+tr\left( ZQ_{2}^{\left( i\right) }\right)  &=&q_{2}^{\left( i\right) } \\
+tr\left( ZQ_{3}\right)  &=&q_{3} \\
+tr\left( ZQ_{4}^{\left( i\right) }\right)  &\leq &q_{4}^{\left( i\right) } \\
+t^{2} &=&1 \\
+Z &\succeq &0\text{ and }rank\left( Z\right) =1
+\end{eqnarray*}
+
+The goal is to solve%
+\begin{eqnarray*}
+&&\max_{A,b,c,p}\int \left( \sum_{i=1}^{N}x_{i}+\sum_{i=1}^{N}\left( \bar{p}%
+_{i}-p_{i}^{\left( k\right) }\right) \right) dF\left( x\right) \\
+p^{\left( 0\right) } &=&\bar{p} \\
+p^{\left( k\right) } &=&\min \left\{ \bar{p},\max \left\{ \left( 1+\gamma
+\right) \left( A^{T}p^{\left( k-1\right) }+c-diag\left( x\right) c\right)
+-\gamma \bar{p},0\right\} \right\}
+\end{eqnarray*}%
+subject to
+
+\begin{enumerate}
+\item \textquotedblleft Box\textquotedblright\ or bound constraints%
+\begin{eqnarray*}
+S_{\left[ low,upp\right] } &\equiv &\left\{ z:low\leq z\leq upp\right\} \\
+A &\in &S_{\left[ 0,1\right] } \\
+b &\in &S_{\left[ 0,\bar{p}\right] } \\
+c &\in &S_{\left[ 0,assets\right] } \\
+p &\in &S_{\left[ 0,\bar{p}\right] }
+\end{eqnarray*}
+
+\item Linear constraints%
+\begin{eqnarray*}
+S_{affine\left( M,m\right) } &\equiv &\left\{ z:Mz=m\right\} \\
+A,b &\in &S_{affine\left( M_{1},m_{1}\right) } \\
+A,c &\in &S_{affine\left( M_{2},m_{2}\right) }
+\end{eqnarray*}%
+for some $M_{i},m_{i}$
+
+\item Complementarity constraints
+
+\begin{enumerate}
+\item Indefinite quadratic form%
+\begin{eqnarray*}
+S_{quad\left( Q,q\right) } &\equiv &\left\{ z:\frac{1}{2}z^{T}Qz+q^{T}z%
+\right\} \\
+vec\left( A\right) &\in &S_{quad\left( H,0\right) }
+\end{eqnarray*}
+for an indefinite matrix $H$
+
+\item $L_{0}$ pseudo-norm%
+\begin{eqnarray*}
+S_{nnz\left( r\right) } &=&\left\{ z:nnz\left( z\right) \leq r\right\} \\
+\left[ a_{ij},a_{ji}\right] &\in &S_{nnz\left( 1\right) }\text{ for }i=1...,N%
+\text{ and }j<i \\
+\left[ a_{11,}...,a_{nn}\right] &\leq &0
+\end{eqnarray*}
+\end{enumerate}
+\end{enumerate}
+
+\section{ADMM\ form}
+
+\begin{eqnarray*}
+&&\min_{x_{0},x_{1},...,x_{p},y}\phi \left( x_{0},x_{1},...,x_{p},y\right) \\
+&&s.t. \\
+A_{0}x_{0}+A_{1}x_{1}+...+A_{p}x_{p}+By &=&b
+\end{eqnarray*}%
+\begin{eqnarray*}
+\tciLaplace _{\beta }\left( x,y,w\right) &:&=\phi \left( x,y\right)
++\left\langle w,Ax+By-b\right\rangle +\frac{\beta }{2}\left\Vert
+Ax+By-b\right\Vert \\
+Ax &:&=\sum A_{i}x_{i} \\
+&&\text{while stopping criteria not satisfied do} \\
+\text{for }i &=&0,...,p\text{ do} \\
+x_{i}^{k+1} &\longleftarrow &\arg \min_{x_{i}}\tciLaplace _{\beta }\left(
+x_{<i}^{k+1},x_{i},x_{>i}^{k},y^{k},w^{k}\right) \\
+&&\text{end for} \\
+y^{k+1} &\longleftarrow &\arg \min_{y}\tciLaplace _{\beta }\left(
+x^{k+1},y,w^{k}\right) \\
+w^{k+1} &\longleftarrow &w^{k}+\beta \left( Ax^{k+1}+By^{k+1}-b\right) \\
+k &\longleftarrow &k+1 \\
+&&\text{end while}
+\end{eqnarray*}
+
+\begin{eqnarray*}
+\underset{N\left( N-1\right) /2}{z_{1}} &=&vec\left( LowerTriangular\left(
+A\right) \right) =\left[ a_{ij}\right] \text{ with }i=1,...,N\text{ and }j<i
+\\
+\underset{N\left( N-1\right) /2}{z_{2}} &=&vec\left( UpperTriangular\left(
+A\right) \right) =\left[ a_{ij}\right] \text{ with }i=1,...,N\text{ and }j>i
+\\
+\underset{N}{z_{3}} &=&b \\
+\underset{N}{z_{4}} &=&c \\
+\underset{N}{z_{5}} &=&p
+\end{eqnarray*}%
+\begin{equation*}
+z=%
+\begin{array}{c}
+z_{1} \\ 
+z_{2} \\ 
+z_{3} \\ 
+z_{4} \\ 
+z_{5}%
+\end{array}%
+\end{equation*}%
+\begin{eqnarray*}
+&&\bar{p}-A^{T}p-\left( I-diag\left( x\right) \right) c \\
+A^{T}p &=&\sum_{j=1}^{N}a_{ji}p_{j}
+\end{eqnarray*}%
+\begin{eqnarray*}
+&&\max_{z}\int \left( \sum_{i}x_{i}+\left( 1+\gamma \right) \sum_{i}\max
+\left\{ 0,\bar{p}-A^{T}p-\left( I-diag\left( x\right) \right) c\right\}
+\right) dF\left( x\right) +\iota _{S_{comp}}\left( \tilde{z}_{1},\tilde{z}%
+_{2}\right) +\iota _{S_{affine}\left( M,m\right) }+\iota _{S_{quad\left(
+Q,q\right) }} \\
+A &\in &S_{\left[ 0,1\right] },b\in S_{\left[ 0,\bar{p}\right] },c\in S_{%
+\left[ 0,assets\right] },p\in S_{\left[ 0,\bar{p}\right] } \\
+A,b &\in &S_{affine\left( M_{1},m_{1}\right) },A,c\in S_{affine\left(
+M_{2},m_{2}\right) } \\
+0 &=&z_{1}-\underset{N\left( N-1\right) /2}{\tilde{z}_{1}} \\
+0 &=&z_{2}-\underset{N\left( N-1\right) /2}{\tilde{z}_{2}}
+\end{eqnarray*}%
+\begin{eqnarray*}
+vec\left( A\right) ^{T}Hvec\left( A\right) &=&Tr\left( vec\left( A\right)
+^{T}Hvec\left( A\right) \right) =Tr\left( Hvec\left( A\right) vec\left(
+A\right) ^{T}\right) =Tr\left( H\tilde{A}\right) \\
+\tilde{A} &=&vec\left( A\right) vec\left( A\right) ^{T} \\
+Rank\left( \tilde{A}\right) &=&1 \\
+\tilde{A} &\succeq &0 \\
+Tr\left( H\tilde{A}\right) &=&0 \\
+\text{Invert} &\text{:}&vec\left( A\right) =\sqrt{diag\left( \tilde{A}%
+\right) }
+\end{eqnarray*}%
+\begin{equation*}
+\sum_{j=1}^{N}a_{ji}p_{j}
+\end{equation*}%
+\begin{eqnarray*}
+S_{comp} &=&\left\{ \left( x,y\right) :x^{T}y=0,x\geq 0,y\geq 0\right\} \\
+S_{\left[ low,upp\right] } &\equiv &\left\{ z:low\leq z\leq upp\right\} \\
+S_{affine\left( M,m\right) } &\equiv &\left\{ z:Mz=m\right\} \\
+S_{quad\left( Q,q\right) } &\equiv &\left\{ z:z^{T}Qz+q^{T}z\right\} \\
+A^{T}p-\tilde{z}_{3} &=&0
+\end{eqnarray*}
+
+\section{Useful}
+
+\begin{equation*}
+c=assets-A^{T}\bar{p}
+\end{equation*}%
+\begin{eqnarray*}
+\left\vert a-b\right\vert &=&\max \left( a,b\right) -\min \left( a,b\right)
+\\
+a+b &=&\max \left( a,b\right) +\min \left( a,b\right) \\
+\max \left\{ a,b\right\} &=&\frac{a+b}{2}+\frac{\left\vert a-b\right\vert }{2%
+} \\
+\min \left\{ a,b\right\} &=&\frac{a+b}{2}-\frac{\left\vert a-b\right\vert }{2%
+}
+\end{eqnarray*}%
+\begin{eqnarray*}
+primal &:&\min f\left( x\right) +g\left( Ax\right) \\
+dual &:&\max -g^{\ast }\left( z\right) -f^{\ast }\left( -A^{-T}z\right)
+\end{eqnarray*}%
+\begin{eqnarray*}
+\bar{p}_{i}\sum_{j=1}^{N}a_{ij}-\bar{p}_{i}+b_{i} &=&0 \\
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j} &=&assets_{i}-c_{i}
+\end{eqnarray*}%
+\begin{equation*}
+\frac{1}{2}%
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33}%
+\end{array}%
+^{T}%
+\begin{array}{ccccccccc}
+2 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\ 
+0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 2 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\ 
+0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 2%
+\end{array}%
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33}%
+\end{array}%
+=0
+\end{equation*}%
+\begin{eqnarray*}
+a^{T}Z_{1}a+%
+\begin{array}{c}
+\begin{array}{cccccccccc}
+p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0%
+\end{array}
+\\ 
+\begin{array}{cccccccccc}
+p_{1} & 0 & 0 & p_{1} & 0 & 0 & p_{1} & 0 & 0 & 0 \\ 
+0 & p_{2} & 0 & 0 & p_{2} & 0 & 0 & p_{2} & 0 & 0 \\ 
+0 & 0 & p_{3} & 0 & 0 & p_{3} & 0 & 0 & p_{3} & 0%
+\end{array}
+\\ 
+\left( 1+\gamma \right) 
+\begin{array}{cccccccccc}
+p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0 \\ 
+0 & 0 & 0 & 0 & 0 & 0 & p_{1} & p_{2} & p_{3} & -1%
+\end{array}%
+\end{array}%
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33} \\ 
+e_{1}%
+\end{array}%
++%
+\begin{array}{c}
+c \\ 
+b \\ 
+\left( 1+\gamma \right) \left( 1-x\right) c%
+\end{array}
+&=&%
+\begin{array}{c}
+assets \\ 
+p \\ 
+\gamma p%
+\end{array}
+\\
+&&
+\end{eqnarray*}%
+\begin{eqnarray*}
+\begin{array}{cc}
+a^{T} & t%
+\end{array}%
+\begin{array}{cc}
+H & 0 \\ 
+0 & 0%
+\end{array}%
+\begin{array}{c}
+a \\ 
+t%
+\end{array}
+&=&0 \\
+\begin{array}{cc}
+a^{T} & t%
+\end{array}%
+\begin{array}{cc}
+0 & 
+\begin{array}{cccccccccc}
+p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0%
+\end{array}%
+^{T} \\ 
+\begin{array}{cccccccccc}
+p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0 & 0 & 0 & 0%
+\end{array}
+& 0%
+\end{array}%
+\begin{array}{c}
+a \\ 
+t%
+\end{array}
+&=& \\
+\begin{array}{cc}
+a^{T} & t%
+\end{array}%
+\begin{array}{cc}
+0 & 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}%
+^{T} \\ 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}
+& 0%
+\end{array}%
+\begin{array}{c}
+a \\ 
+t%
+\end{array}
+&=&tr\left( 
+\begin{array}{cc}
+a^{T} & t%
+\end{array}%
+\begin{array}{cc}
+0 & 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}%
+^{T} \\ 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}
+& 0%
+\end{array}%
+\begin{array}{c}
+a \\ 
+t%
+\end{array}%
+\right) \\
+&=&tr\left( 
+\begin{array}{cc}
+0 & 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}%
+^{T} \\ 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}
+& 0%
+\end{array}%
+\begin{array}{c}
+a \\ 
+t%
+\end{array}%
+\begin{array}{cc}
+a^{T} & t%
+\end{array}%
+\right) \\
+&=&tr\left( 
+\begin{array}{cc}
+0 & 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}%
+^{T} \\ 
+\begin{array}{cccccccccc}
+0 & 0 & 0 & p_{1} & p_{2} & p_{3} & 0 & 0 & 0 & 0%
+\end{array}
+& 0%
+\end{array}%
+\tilde{A}\right) \\
+&&
+\end{eqnarray*}%
+\begin{equation*}
+\end{equation*}%
+\begin{eqnarray*}
+\bar{p}_{i}\sum_{j=1}^{N}a_{ij} &=&\bar{p}_{i}-b_{i} \\
+&&p_{1}\left( a_{11}+a_{12}+a_{13}\right)
+\end{eqnarray*}%
+\begin{equation*}
+\tilde{A}=%
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33}%
+\end{array}%
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33}%
+\end{array}%
+^{T}=%
+\begin{array}{ccccccccc}
+a_{11}^{2} & a_{11}a_{21} & a_{11}a_{31} & a_{11}a_{12} & a_{11}a_{22} & 
+a_{11}a_{32} & a_{11}a_{13} & a_{11}a_{23} & a_{11}a_{33} \\ 
+a_{11}a_{21} & a_{21}^{2} & a_{21}a_{31} & a_{12}a_{21} & a_{21}a_{22} & 
+a_{21}a_{32} & a_{21}a_{13} & a_{21}a_{23} & a_{21}a_{33} \\ 
+a_{11}a_{31} & a_{21}a_{31} & a_{31}^{2} & a_{12}a_{31} & a_{22}a_{31} & 
+a_{31}a_{32} & a_{13}a_{31} & a_{31}a_{23} & a_{31}a_{33} \\ 
+a_{11}a_{12} & a_{12}a_{21} & a_{12}a_{31} & a_{12}^{2} & a_{12}a_{22} & 
+a_{12}a_{32} & a_{12}a_{13} & a_{12}a_{23} & a_{12}a_{33} \\ 
+a_{11}a_{22} & a_{21}a_{22} & a_{22}a_{31} & a_{12}a_{22} & a_{22}^{2} & 
+a_{22}a_{32} & a_{13}a_{22} & a_{22}a_{23} & a_{22}a_{33} \\ 
+a_{11}a_{32} & a_{21}a_{32} & a_{31}a_{32} & a_{12}a_{32} & a_{22}a_{32} & 
+a_{32}^{2} & a_{13}a_{32} & a_{23}a_{32} & a_{32}a_{33} \\ 
+a_{11}a_{13} & a_{21}a_{13} & a_{13}a_{31} & a_{12}a_{13} & a_{13}a_{22} & 
+a_{13}a_{32} & a_{13}^{2} & a_{13}a_{23} & a_{13}a_{33} \\ 
+a_{11}a_{23} & a_{21}a_{23} & a_{31}a_{23} & a_{12}a_{23} & a_{22}a_{23} & 
+a_{23}a_{32} & a_{13}a_{23} & a_{23}^{2} & a_{23}a_{33} \\ 
+a_{11}a_{33} & a_{21}a_{33} & a_{31}a_{33} & a_{12}a_{33} & a_{22}a_{33} & 
+a_{32}a_{33} & a_{13}a_{33} & a_{23}a_{33} & a_{33}^{2}%
+\end{array}%
+\end{equation*}%
+$\allowbreak $%
+\begin{equation*}
+p=\min \left\{ \bar{p},\left( 1+\gamma \right) \left( A^{T}\bar{p}%
++c-diag\left( x\right) c\right) -\gamma \bar{p}\right\}
+\end{equation*}%
+\begin{eqnarray*}
+p &=&\min \left\{ \bar{p},\left( 1+\gamma \right) \left( A^{T}\min \left\{ 
+\bar{p},\left( 1+\gamma \right) \left( A^{T}\bar{p}+c-diag\left( x\right)
+c\right) -\gamma \bar{p}\right\} +c-diag\left( x\right) c\right) -\gamma 
+\bar{p}\right\} \\
+&=&\min \left\{ \bar{p},\left( 1+\gamma \right) A^{T}\min \left\{ \bar{p}%
+,\left( 1+\gamma \right) A^{T}\bar{p}+\left( 1+\gamma \right) \left(
+I_{N}-diag\left( x\right) \right) c-\gamma \bar{p}\right\} +\left(
+I_{N}-diag\left( x\right) \right) \left( 1+\gamma \right) c-\gamma \bar{p}%
+\right\}
+\end{eqnarray*}%
+\begin{equation*}
+=\min \left\{ \bar{p},\left( 1+\gamma \right) ^{2}A^{T}A^{T}\bar{p}+\left[
+\left( 1+\gamma \right) A^{T}+I_{N}\right] \left[ \left( 1+\gamma \right)
+\left( I_{N}-diag\left( x\right) \right) c-\gamma \bar{p}\right] \right\}
+\end{equation*}%
+\begin{equation*}
+A=\left[ 
+\begin{array}{ccc}
+0 & a_{12} & a_{13} \\ 
+a_{21} & 0 & a_{23} \\ 
+a_{31} & a_{32} & 0%
+\end{array}%
+\right]
+\end{equation*}%
+\begin{eqnarray*}
+A^{T}A^{T} &=&\left[ 
+\begin{array}{ccc}
+a_{11} & a_{12} & a_{13} \\ 
+a_{21} & a_{22} & a_{23} \\ 
+a_{31} & a_{32} & a_{33}%
+\end{array}%
+\right] ^{T}\left[ 
+\begin{array}{ccc}
+a_{11} & a_{12} & a_{13} \\ 
+a_{21} & a_{22} & a_{23} \\ 
+a_{31} & a_{32} & a_{33}%
+\end{array}%
+\right] ^{T} \\
+&=&\left[ 
+\begin{array}{ccc}
+a_{11}^{2}+a_{12}a_{21}+a_{13}a_{31} & a_{11}a_{21}+a_{21}a_{22}+a_{31}a_{23}
+& a_{11}a_{31}+a_{21}a_{32}+a_{31}a_{33} \\ 
+a_{11}a_{12}+a_{12}a_{22}+a_{13}a_{32} & a_{22}^{2}+a_{12}a_{21}+a_{23}a_{32}
+& a_{12}a_{31}+a_{22}a_{32}+a_{32}a_{33} \\ 
+a_{11}a_{13}+a_{12}a_{23}+a_{13}a_{33} & 
+a_{21}a_{13}+a_{22}a_{23}+a_{23}a_{33} & a_{33}^{2}+a_{13}a_{31}+a_{23}a_{32}%
+\end{array}%
+\right] \\
+&=&\left[ 
+\begin{array}{ccc}
+0 & a_{31}a_{23} & a_{21}a_{32} \\ 
+a_{13}a_{32} & 0 & a_{12}a_{31} \\ 
+a_{12}a_{23} & a_{21}a_{13} & 0%
+\end{array}%
+\right] \\
+&=&\left[ 
+\begin{array}{ccc}
+0 & a_{31}a_{23} & a_{21}a_{32} \\ 
+a_{13}a_{32} & 0 & a_{12}a_{31} \\ 
+a_{12}a_{23} & a_{21}a_{13} & 0%
+\end{array}%
+\right]
+\end{eqnarray*}
+: $\allowbreak $%
+\begin{eqnarray*}
+\left( A^{T}A^{T}\right) A^{T} &=&\left[ 
+\begin{array}{ccc}
+0 & a_{31}a_{23} & a_{21}a_{32} \\ 
+a_{13}a_{32} & 0 & a_{12}a_{31} \\ 
+a_{12}a_{23} & a_{21}a_{13} & 0%
+\end{array}%
+\right] \left[ 
+\begin{array}{ccc}
+0 & a_{12} & a_{13} \\ 
+a_{21} & 0 & a_{23} \\ 
+a_{31} & a_{32} & 0%
+\end{array}%
+\right] ^{T} \\
+&=&\left( a_{12}a_{31}a_{23}+a_{21}a_{13}a_{32}\right) \left[ 
+\begin{array}{ccc}
+1 & 0 & 0 \\ 
+0 & 1 & 0 \\ 
+0 & 0 & 1%
+\end{array}%
+\right]
+\end{eqnarray*}%
+\begin{eqnarray*}
+\left( A^{T}A^{T}A^{T}\right) A^{T} &=&\left(
+a_{12}a_{31}a_{23}+a_{21}a_{13}a_{32}\right) \left[ 
+\begin{array}{ccc}
+1 & 0 & 0 \\ 
+0 & 1 & 0 \\ 
+0 & 0 & 1%
+\end{array}%
+\right] A^{T} \\
+&=&\left( a_{12}a_{31}a_{23}+a_{21}a_{13}a_{32}\right) A^{T}
+\end{eqnarray*}
+: $\allowbreak $%
+\begin{equation*}
+tr\left( AA\right) =0
+\end{equation*}%
+$\left[ 
+\begin{array}{ccc}
+0 & a_{12} & a_{13} \\ 
+a_{21} & 0 & a_{23} \\ 
+a_{31} & a_{32} & 0%
+\end{array}%
+\right] \left[ 
+\begin{array}{ccc}
+0 & a_{12} & a_{13} \\ 
+a_{21} & 0 & a_{23} \\ 
+a_{31} & a_{32} & 0%
+\end{array}%
+\right] =\allowbreak \left[ 
+\begin{array}{ccc}
+0 & a_{13}a_{32} & a_{12}a_{23} \\ 
+a_{31}a_{23} & 0 & a_{21}a_{13} \\ 
+a_{21}a_{32} & a_{12}a_{31} & 0%
+\end{array}%
+\right] \allowbreak $%
+\begin{equation*}
+\left[ 
+\begin{array}{ccc}
+0 & a_{12} & a_{13} \\ 
+a_{21} & 0 & a_{23} \\ 
+a_{31} & a_{32} & 0%
+\end{array}%
+\right] \left[ 
+\begin{array}{ccc}
+0 & a_{13}a_{32} & a_{12}a_{23} \\ 
+a_{31}a_{23} & 0 & a_{21}a_{13} \\ 
+a_{21}a_{32} & a_{12}a_{31} & 0%
+\end{array}%
+\right]
+\end{equation*}
+: $\left[ 
+\begin{array}{ccc}
+a_{12}a_{31}a_{23}+a_{21}a_{13}a_{32} & a_{12}a_{13}a_{31} & 
+a_{12}a_{21}a_{13} \\ 
+a_{21}a_{23}a_{32} & a_{12}a_{31}a_{23}+a_{21}a_{13}a_{32} & 
+a_{12}a_{21}a_{23} \\ 
+a_{31}a_{23}a_{32} & a_{13}a_{31}a_{32} & 
+a_{12}a_{31}a_{23}+a_{21}a_{13}a_{32}%
+\end{array}%
+\right] \allowbreak =\allowbreak $ : 
+\begin{eqnarray*}
+&&\left( 1+\gamma \right) \left( A^{T}p+\left[ I_{N}-diag\left( x\right) %
+\right] c\right) -\gamma \bar{p} \\
+\underset{M\times M}{H_{3}} &=&0_{M\times M} \\
+\underset{N\times N^{2}}{h_{3,1}} &=&I_{N}\otimes p^{T} \\
+\underset{N\times M}{h_{3}^{\left( k-1\right) }} &=&\left( 1+\gamma \right) %
+\left[ 
+\begin{array}{ccc}
+\underset{N\times N^{2}}{h_{3,1}^{\left( k-1\right) }} & 0_{N\times N} & 
+I_{N}-diag\left( x\right)%
+\end{array}%
+\right] ^{T} \\
+\underset{N\times 1}{q_{3}} &=&-\gamma \bar{p} \\
+\left( h_{3}^{\left( k-1\right) }\right) ^{T}z+q_{3} &=&\left( 1+\gamma
+\right) \left( A^{T}p^{\left( k-1\right) }+\left[ I_{N}-diag\left( x\right) %
+\right] c\right) -\gamma \bar{p}
+\end{eqnarray*}%
+\begin{eqnarray*}
+A^{T}p &=&\sum_{j=1}^{N}a_{ji}p_{j} \\
+\frac{1}{2}%
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33} \\ 
+... \\ 
+p_{1} \\ 
+p_{2} \\ 
+p_{3}%
+\end{array}%
+^{T}%
+\begin{array}{ccccccccccccc}
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 &  &  &  &  \\ 
+&  &  &  &  &  &  &  &  &  &  &  &  \\ 
+&  &  &  &  &  &  &  &  &  &  &  &  \\ 
+&  &  &  &  &  &  &  &  &  &  &  &  \\ 
+&  &  &  &  &  &  &  &  &  &  &  & 
+\end{array}%
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33} \\ 
+... \\ 
+p_{1} \\ 
+p_{2} \\ 
+p_{3}%
+\end{array}
+&=&a_{11}p_{1}+a_{21}p_{2}+a_{31}p_{3}
+\end{eqnarray*}%
+\begin{eqnarray*}
+\begin{array}{cc}
+a^{T} & p^{T}%
+\end{array}%
+\begin{array}{cc}
+0 & m \\ 
+m^{T} & 0%
+\end{array}%
+\begin{array}{c}
+a \\ 
+p%
+\end{array}
+&=&%
+\begin{array}{cc}
+a^{T} & p^{T}%
+\end{array}%
+\begin{array}{c}
+mp \\ 
+m^{T}a%
+\end{array}
+\\
+&=&a^{T}mp+p^{T}m^{T}a \\
+&=&2a^{T}mp \\
+&=&a_{11}p_{1}+a_{21}p_{2}+a_{31}p_{3}
+\end{eqnarray*}%
+\begin{eqnarray*}
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33}%
+\end{array}%
+^{T}%
+\begin{array}{ccc}
+1 & 0 & 0 \\ 
+0 & 1 & 0 \\ 
+0 & 0 & 1 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0%
+\end{array}%
+\begin{array}{c}
+p_{1} \\ 
+p_{2} \\ 
+p_{3}%
+\end{array}
+&=&p_{1}a_{11}+p_{2}a_{21}+p_{3}a_{31} \\
+\begin{array}{c}
+a_{11} \\ 
+a_{21} \\ 
+a_{31} \\ 
+a_{12} \\ 
+a_{22} \\ 
+a_{32} \\ 
+a_{13} \\ 
+a_{23} \\ 
+a_{33}%
+\end{array}%
+^{T}%
+\begin{array}{ccc}
+0 & 0 & 0 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0 \\ 
+1 & 0 & 0 \\ 
+0 & 1 & 0 \\ 
+0 & 0 & 1 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0 \\ 
+0 & 0 & 0%
+\end{array}%
+\begin{array}{c}
+p_{1} \\ 
+p_{2} \\ 
+p_{3}%
+\end{array}
+&=&p_{1}a_{12}+p_{2}a_{22}+p_{3}a_{32}
+\end{eqnarray*}
+: : : 
+\begin{eqnarray*}
+h_{4i} &=&e_{i}\otimes I_{N} \\
+H_{4i} &=&%
+\begin{array}{cccc}
+0_{N^{2}\times N^{2}} & 0_{1\times N} & 0_{1\times N} & \underset{%
+N^{2}\times N}{e_{i}^{T}\otimes I_{N}} \\ 
+0_{N\times 1} & 0_{N\times N} &  &  \\ 
+0_{N\times 1} &  &  &  \\ 
+\underset{N\times N^{2}}{e_{i}\otimes I_{N}} &  &  & 
+\end{array}%
+\end{eqnarray*}%
+\begin{eqnarray*}
+&& \\
+&=&\underset{1\times N^{2}}{z_{1}^{T}}e_{t}\underset{N\times 1}{z_{4}}+%
+\underset{1\times N}{z_{4}^{T}}e_{b}\underset{N^{2}\times 1}{z_{1}}
+\end{eqnarray*}
+: $%
+\begin{array}{cc}
+a^{T} & p^{T}%
+\end{array}%
+\begin{array}{cc}
+0_{N^{2}\times N^{2}} & \underset{N^{2}\times N}{e_{i}^{T}\otimes I_{N}} \\ 
+\underset{N\times N^{2}}{e_{i}\otimes I_{N}} & 0_{N\times N}%
+\end{array}%
+\begin{array}{c}
+a \\ 
+p%
+\end{array}%
+$%
+\begin{eqnarray*}
+p^{\left( 0\right) } &=&\bar{p} \\
+p^{\left( k\right) } &=&\min \left\{ \bar{p},tr\left( HZ\right)
++q_{3}\right\}
+\end{eqnarray*}
+
+\end{document}

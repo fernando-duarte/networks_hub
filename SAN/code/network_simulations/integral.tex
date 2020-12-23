@@ -1,0 +1,102 @@
+
+\documentclass{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%TCIDATA{OutputFilter=LATEX.DLL}
+%TCIDATA{Version=5.50.0.2960}
+%TCIDATA{<META NAME="SaveForMode" CONTENT="1">}
+%TCIDATA{BibliographyScheme=Manual}
+%TCIDATA{Created=Wednesday, August 12, 2020 17:11:20}
+%TCIDATA{LastRevised=Wednesday, August 12, 2020 20:57:52}
+%TCIDATA{<META NAME="GraphicsSave" CONTENT="32">}
+%TCIDATA{<META NAME="DocumentShell" CONTENT="Standard LaTeX\Blank - Standard LaTeX Article">}
+%TCIDATA{CSTFile=40 LaTeX article.cst}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+\input{tcilatex}
+
+\begin{document}
+
+
+\begin{eqnarray*}
+&&\frac{x^{\alpha -1}\left( 1-x\right) ^{\beta -1}}{B\left( \alpha ,\beta
+\right) } \\
+&&\min \left\{ \bar{p}_{i},\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left(
+1-x_{i}\right) c_{i}\right\} 
+\end{eqnarray*}%
+\begin{eqnarray*}
+\min \left\{ \bar{p}_{i},\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left(
+1-x_{i}\right) c_{i}\right\}  &=&%
+\begin{array}{cc}
+\bar{p}_{i} & \bar{p}_{i}\leq \sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left(
+1-x_{i}\right) c_{i} \\ 
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left( 1-x_{i}\right) c_{i} & \bar{p}%
+_{i}>\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left( 1-x_{i}\right) c_{i}%
+\end{array}
+\\
+&=&%
+\begin{array}{cc}
+\bar{p}_{i} & x_{i}\leq -\frac{1}{c_{i}}\bar{p}_{i}+\frac{1}{c_{i}}%
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+1 \\ 
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left( 1-x_{i}\right) c_{i} & x_{i}>-\frac{1%
+}{c_{i}}\bar{p}_{i}+\frac{1}{c_{i}}\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+1%
+\end{array}%
+\end{eqnarray*}%
+\begin{eqnarray*}
+Y_{i} &=&\min \left\{ \bar{p}_{i},\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left(
+1-x_{i}\right) c_{i}\right\}  \\
+F_{Y}\left( y\right)  &=&P\left( Y\leq y\right)  \\
+&=&P\left( \min \left\{ \bar{p}_{i},\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left(
+1-x_{i}\right) c_{i}\right\} \leq y\right)  \\
+&=&%
+\begin{array}{cc}
+P\left( \bar{p}_{i}\leq y\right)  & x_{i}\leq -\frac{1}{c_{i}}\bar{p}_{i}+%
+\frac{1}{c_{i}}\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+1 \\ 
+P\left( \sum_{j=1}^{N}a_{ji}\bar{p}_{j}+\left( 1-x_{i}\right) c_{i}\leq
+y\right)  & x_{i}>-\frac{1}{c_{i}}\bar{p}_{i}+\frac{1}{c_{i}}%
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+1%
+\end{array}
+\\
+&=&%
+\begin{array}{cc}
+P\left( \bar{p}_{i}\leq y\right)  & x_{i}\leq -\frac{1}{c_{i}}\bar{p}_{i}+%
+\frac{1}{c_{i}}\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+1 \\ 
+P\left( 1-\frac{1}{c_{i}}\left[ y-\sum_{j=1}^{N}a_{ji}\bar{p}_{j}\right]
+\leq x_{i}\right)  & x_{i}>-\frac{1}{c_{i}}\bar{p}_{i}+\frac{1}{c_{i}}%
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j}+1%
+\end{array}
+\\
+&=&%
+\begin{array}{cc}
+1\left\{ \bar{p}_{i}\leq y\right\}  & x_{i}\leq 1-\frac{1}{c_{i}}\bar{p}_{i}+%
+\frac{1}{c_{i}}\sum_{j=1}^{N}a_{ji}\bar{p}_{j} \\ 
+F_{X}\left( 1-\frac{1}{c_{i}}\left[ y-\sum_{j=1}^{N}a_{ji}\bar{p}_{j}\right]
+\right)  & x_{i}>1-\frac{1}{c_{i}}\bar{p}_{i}+\frac{1}{c_{i}}%
+\sum_{j=1}^{N}a_{ji}\bar{p}_{j}%
+\end{array}%
+\end{eqnarray*}%
+\[
+\int_{0}^{1}
+\]
+
+\end{document}

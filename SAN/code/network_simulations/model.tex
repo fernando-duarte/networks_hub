@@ -1,0 +1,191 @@
+%2multibyte Version: 5.50.0.2960 CodePage: 936
+
+\documentclass{article}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%TCIDATA{OutputFilter=LATEX.DLL}
+%TCIDATA{Version=5.50.0.2960}
+%TCIDATA{Codepage=936}
+%TCIDATA{<META NAME="SaveForMode" CONTENT="1">}
+%TCIDATA{BibliographyScheme=Manual}
+%TCIDATA{Created=Saturday, July 11, 2020 15:08:03}
+%TCIDATA{LastRevised=Tuesday, July 28, 2020 21:29:06}
+%TCIDATA{<META NAME="GraphicsSave" CONTENT="32">}
+%TCIDATA{<META NAME="DocumentShell" CONTENT="Standard LaTeX\Blank - Standard LaTeX Article">}
+%TCIDATA{CSTFile=40 LaTeX article.cst}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+\input{tcilatex}
+\begin{document}
+
+
+\[
+\max_{a_{ij},p_{i},c_{i},d_{i}}E\left[ \sum_{i=1}^{n}x_{i}+\bar{p}%
+_{i}-p_{i}\left( x\right) \right] 
+\]%
+\begin{eqnarray*}
+0 &\leq &p_{i}\leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &c_{i}\leq assets_{i}\text{, }i=1,..,N \\
+0 &\leq &b_{i}\leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &a_{ij}\leq 1\text{, }i,j=1,..,N \\
+\bar{p}_{i}\sum_{j=1}^{n}a_{ij} &=&f_{i}\text{, }i=1,..,N \\
+\sum_{j=1}^{n}a_{ji}\bar{p}_{j} &=&d_{j}\text{, }i=1,..,N \\
+a_{ii} &=&0\text{, }i=1,..,N \\
+a_{ij}a_{ji} &=&0\text{, }i=1,..,N\text{ and }j<i \\
+p_{i}\left( x\right)  &=&\min \left\{ \bar{p}_{i},\max \left\{ \left(
+1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}p_{j}\left( x\right)
++c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\} \right\} \text{, }i=1,..,N
+\end{eqnarray*}%
+\begin{eqnarray*}
+&&\max_{p,c,b,A,m,q}E\left[ \sum_{i=1}^{n}x_{i}+\bar{p}_{i}-p_{i}\left(
+x\right) \right]  \\
+0 &\leq &p\leq \bar{p} \\
+0 &\leq &c\leq assets_{i} \\
+0 &\leq &b\leq \bar{p}_{i} \\
+0 &\leq &vec\left( A\right) \leq 1 \\
+b &=&\bar{p}-\bar{p}^{T}A1_{N} \\
+c &=&assets-A^{T}\bar{p} \\
+\text{omit} &\text{:}&p\left( x\right) =t \\
+m &\geq &\left( 1+\gamma \right) \left( q+c+x\right) -\gamma \bar{p} \\
+m &\geq &0 \\
+p\left( x\right)  &\leq &\bar{p} \\
+p\left( x\right)  &\leq &m \\
+vec\left( A\right) ^{T}Mvec\left( A\right)  &=&0 \\
+q &=&A^{T}p\left( x\right) 
+\end{eqnarray*}%
+\[
+aMa=0
+\]%
+\[
+vec\left( A\right) =\sum_{i=1}^{N}e_{i}\otimes Ae_{i}
+\]%
+\begin{eqnarray*}
+vec\left( A\right) ^{T}Mvec\left( A\right)  &=&0 \\
+q_{i} &=&\sum_{j=1}^{n}a_{ji}p_{j}\left( x\right)  \\
+p_{i}\left( x\right)  &=&t_{i} \\
+m_{i} &=&\max \left\{ \left( 1+\gamma \right) \left(
+q_{i}+c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\}  \\
+m_{i} &\geq &\left( 1+\gamma \right) \left( q_{i}+c_{i}+x_{i}\right) -\gamma 
+\bar{p}_{i} \\
+m_{i} &\geq &0 \\
+-t_{i} &=&\max \left\{ -\bar{p}_{i},-m_{i}\right\}  \\
+-t_{i} &\geq &-\bar{p}_{i} \\
+-t_{i} &\geq &-m_{i}
+\end{eqnarray*}
+
+\section{Convex Reformulation}
+
+\[
+\max_{a_{ij},p_{i},c_{i},d_{i}}or\min_{a_{ij},p_{i},c_{i},d_{i}}E\left[
+\sum_{i=1}^{n}x_{i}+\bar{p}_{i}-p_{i}\left( x\right) \right] 
+\]%
+\begin{eqnarray*}
+0 &\leq &p_{i}\leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &c_{i}\leq assets_{i}\text{, }i=1,..,N \\
+0 &\leq &b_{i}\leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &a_{ij}\leq 1\text{, }i,j=1,..,N \\
+\bar{p}_{i}\sum_{j=1}^{n}a_{ij} &=&f_{i}\text{, }i=1,..,N \\
+\sum_{j=1}^{n}a_{ji}\bar{p}_{j} &=&d_{j}\text{, }i=1,..,N \\
+a_{ii} &=&0\text{, }i=1,..,N \\
+a_{ij}a_{ji} &=&0\text{, }i=1,..,N\text{ and }j<i \\
+p_{i}\left( x\right)  &=&\min \left\{ \bar{p}_{i},\max \left\{ \left(
+1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}p_{j}\left( x\right)
++c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\} \right\} \text{, }i=1,..,N
+\end{eqnarray*}
+
+\section{Reformulation}
+
+\[
+\min_{a_{ij},p_{i},c_{i},d_{i}}or\max_{a_{ij},p_{i},c_{i},d_{i}}%
+\sum_{i=1}^{n}E\left[ p_{i}\left( x\right) \right] 
+\]%
+\begin{eqnarray*}
+0 &\leq &p_{i}\left( x\right) \leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &c_{i}\leq assets_{i}\text{, }i=1,..,N \\
+0 &\leq &b_{i}\leq \bar{p}_{i}\text{, }i=1,..,N \\
+0 &\leq &a_{ij}\leq 1\text{, }i,j=1,..,N \\
+\bar{p}_{i}\sum_{j=1}^{n}a_{ij} &=&f_{i}\text{, }i=1,..,N \\
+\sum_{j=1}^{n}a_{ji}\bar{p}_{j} &=&d_{j}\text{, }i=1,..,N \\
+a_{ii} &=&0\text{, }i=1,..,N \\
+a_{ij}a_{ji} &=&0\text{, }i=1,..,N\text{ and }j<i \\
+p_{i}\left( x\right) &=&\min \left\{ \bar{p}_{i},\max \left\{ \left(
+1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}p_{j}\left( x\right)
++c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\} \right\} \text{, }i=1,..,N
+\end{eqnarray*}
+
+\[
+\int p_{i}\left( x\right) dF\left( x\right) =\int \min \left\{ \bar{p}%
+_{i},\max \left\{ \left( 1+\gamma \right) \left(
+\sum_{j=1}^{n}a_{ji}p_{j}\left( x\right) +c_{i}+x_{i}\right) -\gamma \bar{p}%
+_{i},0\right\} \right\} dF\left( x\right) 
+\]%
+\begin{eqnarray*}
+\Phi _{i}\left( p\right) &\equiv &\min \left\{ \bar{p}_{i},\max \left\{
+\left( 1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}p_{j}\left( x\right)
++c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\} \right\} \text{, }i=1,..,N
+\\
+p^{\left( 0\right) } &=&\bar{p} \\
+p^{\left( i\right) } &=&\Phi _{i}\left( p^{\left( i-1\right) }\right) \text{
+for }i=1,2,...
+\end{eqnarray*}%
+\begin{eqnarray*}
+p^{\left( 1\right) }\left( x\right) &\equiv &\min \left\{ \bar{p}_{i},\max
+\left\{ \left( 1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}\bar{p}%
+_{j}+c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\} \right\} \\
+p^{\left( 2\right) }\left( x\right) &\equiv &\min \left\{ \bar{p}_{i},\max
+\left\{ \left( 1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}p_{j}^{\left(
+1\right) }\left( x\right) +c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\}
+\right\} \\
+&&... \\
+p^{\left( R\right) }\left( x\right) &\equiv &\min \left\{ \bar{p}_{i},\max
+\left\{ \left( 1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}p_{j}^{\left(
+R-1\right) }\left( x\right) +c_{i}+x_{i}\right) -\gamma \bar{p}%
+_{i},0\right\} \right\}
+\end{eqnarray*}%
+\[
+p^{\left( 2\right) }\left( x\right) \equiv \min \left\{ \bar{p}_{i},\max
+\left\{ \left( 1+\gamma \right) \left( \sum_{j=1}^{n}a_{ji}p_{j}^{\left(
+1\right) }\left( x\right) +c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\}
+\right\} 
+\]%
+\begin{eqnarray*}
+\int p^{\left( 1\right) }\left( x\right) dF\left( x\right) &\equiv &\int
+\min \left\{ \bar{p}_{i},\max \left\{ \left( 1+\gamma \right) \left(
+\sum_{j=1}^{n}a_{ji}\bar{p}_{j}+c_{i}+x_{i}\right) -\gamma \bar{p}%
+_{i},0\right\} \right\} dF\left( x\right) \\
+\int p^{\left( 2\right) }\left( x\right) dF\left( x\right) &\equiv &\int
+\min \left\{ \bar{p}_{i},\max \left\{ \left( 1+\gamma \right) \left(
+\sum_{j=1}^{n}a_{ji}p_{j}^{\left( 1\right) }\left( x\right)
++c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\} \right\} dF\left( x\right)
+\\
+&&... \\
+\int p^{\left( R\right) }\left( x\right) dF\left( x\right) &\equiv &\int
+\min \left\{ \bar{p}_{i},\max \left\{ \left( 1+\gamma \right) \left(
+\sum_{j=1}^{n}a_{ji}p_{j}^{\left( R-1\right) }\left( x\right)
++c_{i}+x_{i}\right) -\gamma \bar{p}_{i},0\right\} \right\} dF\left( x\right)
+\end{eqnarray*}%
+\[
+\int p^{\left( R\right) }\left( x\right) F\left( x\right) dx 
+\]
+
+\end{document}

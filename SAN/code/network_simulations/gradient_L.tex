@@ -1,0 +1,709 @@
+%2multibyte Version: 5.50.0.2953 CodePage: 1252
+
+\documentclass{article}
+\usepackage{amsmath}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%TCIDATA{OutputFilter=LATEX.DLL}
+%TCIDATA{Version=5.50.0.2953}
+%TCIDATA{Codepage=1252}
+%TCIDATA{<META NAME="SaveForMode" CONTENT="1">}
+%TCIDATA{BibliographyScheme=Manual}
+%TCIDATA{Created=Tuesday, September 05, 2017 18:49:10}
+%TCIDATA{LastRevised=Tuesday, September 12, 2017 12:28:13}
+%TCIDATA{<META NAME="GraphicsSave" CONTENT="32">}
+%TCIDATA{<META NAME="DocumentShell" CONTENT="Standard LaTeX\Blank - Standard LaTeX Article">}
+%TCIDATA{CSTFile=40 LaTeX article.cst}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+\input{tcilatex}
+\begin{document}
+
+
+\section{Computing the gradient}
+
+The loss function is given by 
+\begin{eqnarray*}
+L\left( \tilde{\theta}\right)  &=&E\left[ \sum_{k=1}^{n}\min \left(
+x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( 1+\gamma \right) \left(
+x_{k}-w_{k}\right) u_{k}\left( x\right) \right]  \\
+&&x\text{ drawn from joint cdf }F\left( x;\tilde{\theta}\right)  \\
+u_{k}\left( x\right)  &=&\left\{ 
+\begin{array}{ccc}
+0 & , & \text{if }k\notin D \\ 
+e_{k}\left( I_{D}-\left( 1+\gamma \right) A_{D}\right) ^{-1}1_{D} & , & 
+\text{if }k\in D%
+\end{array}%
+\right.  \\
+D &=&\left\{ i:p_{i}<\bar{p}_{i}\right\}  \\
+p_{i} &=&\min \left\{ \bar{p}_{i},\max \left\{ \left( 1+\gamma \right)
+\left( \sum_{j}p_{j}a_{ji}+c_{i}-x_{i}\right) -\gamma \bar{p}_{i},0\right\}
+\right\}  \\
+\underset{\left\vert D\right\vert \times \left\vert D\right\vert }{A_{D}} &=&%
+\underset{\left\vert D\right\vert \times N}{\underbrace{S^{\prime }}}%
+\underset{n\times n}{\underbrace{A}}\underset{n\times \left\vert
+D\right\vert }{\underbrace{S}} \\
+S_{ij} &=&\left\{ 
+\begin{array}{ccc}
+1 & , & \text{if }j\in D\text{ and }i\leq j \\ 
+0 & , & \text{otherwise}%
+\end{array}%
+\right.  \\
+e_{k} &=&\left[ 
+\begin{array}{ccccc}
+0 & ... & \underset{k^{th}\text{ entry}}{\underbrace{1}} & ... & 0%
+\end{array}%
+\right]  \\
+I_{D} &=&\left\vert D\right\vert \times \left\vert D\right\vert \text{
+identity matrix} \\
+\tilde{\theta} &=&\left( A,b,c,w,\bar{p},\delta ,\gamma \right) 
+\end{eqnarray*}%
+Let's write it in vector/matrix form%
+\[
+L\left( \tilde{\theta}\right) =E\left\{ \underset{1\times 1}{\underbrace{%
+\underbrace{\min \left( \underset{1\times n}{\underbrace{x}},\underset{%
+1\times n}{\underbrace{w}}\right) }\underset{n\times 1}{\underbrace{1_{n}}}}}%
++\left( 1+\gamma \right) \left[ \underset{1\times 1}{\underbrace{\underset{%
+1\times n}{\underbrace{\left( x-w\right) }}\underset{n\times \left\vert
+D\right\vert }{\underbrace{S}}\underset{\left\vert D\right\vert \times
+\left\vert D\right\vert }{\underbrace{\left( \underset{\left\vert
+D\right\vert \times \left\vert D\right\vert }{\underbrace{I_{D}}}-\left(
+1+\gamma \right) \underset{\left\vert D\right\vert \times n}{\underbrace{%
+S^{T}}}\underset{n\times n}{\underbrace{A}}\underset{n\times \left\vert
+D\right\vert }{\underbrace{S}}\right) ^{-1}}}\underset{\left\vert
+D\right\vert \times 1}{\underbrace{1_{D}}}}}\right] \right\} 
+\]%
+\begin{eqnarray*}
+&&x\text{ drawn from joint cdf }F\left( x;\tilde{\theta}\right) \text{ and
+joint pdf }f\left( x;\tilde{\theta}\right)  \\
+D &=&\left\{ i:p_{i}<\bar{p}_{i}\right\}  \\
+\left\vert D\right\vert  &=&\#\text{ elements in }D \\
+p &=&\min \left\{ \bar{p},\max \left\{ \left( 1+\gamma \right) \left( 
+\underset{1\times n}{\underbrace{\underset{1\times n}{\underbrace{p}}%
+\underset{n\times n}{\underbrace{A}}}}\underset{1\times n}{+\underbrace{c-x}}%
+\right) -\gamma \bar{p},0\right\} \right\}  \\
+S_{ij} &=&\left\{ 
+\begin{array}{ccc}
+1 & , & \text{if }j\in D\text{ and }i\leq j \\ 
+0 & , & \text{otherwise}%
+\end{array}%
+\right.  \\
+I_{D} &=&\left\vert D\right\vert \times \left\vert D\right\vert \text{
+identity matrix} \\
+1_{D} &=&\underset{\left\vert D\right\vert \times 1}{\left[ 
+\begin{array}{ccccc}
+1 & ... & 1 & ... & 1%
+\end{array}%
+\right] }^{T} \\
+\tilde{\theta} &=&\left( A,b,c,w,\bar{p},\delta ,\gamma \right) 
+\end{eqnarray*}%
+\begin{eqnarray*}
+p_{i} &<&\bar{p}_{i} \\
+p_{i} &<&\bar{p}_{i}
+\end{eqnarray*}%
+\begin{eqnarray*}
+case1 &:&\bar{p}\leq \max \left\{ \left( 1+\gamma \right) \left(
+pA+c-x\right) -\gamma \bar{p},0\right\}  \\
+case1a &:&\left( 1+\gamma \right) \left( pA+c-x\right) -\gamma \bar{p}>0 \\
+case1b &:&\left( 1+\gamma \right) \left( pA+c-x\right) -\gamma \bar{p}\leq 0
+\end{eqnarray*}%
+\begin{eqnarray*}
+case2 &:&\bar{p}>\max \left\{ \left( 1+\gamma \right) \left( pA+c-x\right)
+-\gamma \bar{p},0\right\}  \\
+case2a &:&\left( 1+\gamma \right) \left( pA+c-x\right) -\gamma \bar{p}>0 \\
+case2b &:&\left( 1+\gamma \right) \left( pA+c-x\right) -\gamma \bar{p}\leq 0
+\end{eqnarray*}%
+\begin{eqnarray*}
+&&A\text{ is }n\times n \\
+&&b,c,w,\bar{p},\delta ,x\text{ are }1\times n \\
+&&\gamma \text{ is }1\times 1 \\
+&&F\left( x;\tilde{\theta}\right) \text{ is }1\times 1 \\
+&&vec\left( \tilde{\theta}\right) \text{ is }\left( n^{2}+5n+1\right) \times
+1
+\end{eqnarray*}
+
+We solve%
+\begin{eqnarray*}
+&&\max_{\theta }L\left( x;\tilde{\theta}\right)  \\
+&&s.t. \\
+&&...
+\end{eqnarray*}%
+where $\theta $ is a subset of $\tilde{\theta}$. 
+
+To compute numerically, we want to compute%
+\[
+\nabla _{\theta }L\left( x;\tilde{\theta}\right) 
+\]%
+Let's make a change of variables so that we can draw the random variables
+from the uniform distribution $U$ and then transform them%
+\[
+x=F^{-1}\left( u;\tilde{\theta}\right) 
+\]%
+\begin{eqnarray*}
+L\left( \tilde{\theta}\right)  &=&\int_{\left[ 0,1\right] ^{n}}\left\{ \min
+\left( x,w\right) 1_{n}+\left( 1+\gamma \right) \left[ \left( x-w\right)
+S\left( I_{D}-\left( 1+\gamma \right) S^{T}AS\right) ^{-1}1_{D}\right]
+\right\} f\left( x;\tilde{\theta}\right) dx \\
+&=&\int_{\left[ 0,1\right] ^{n}}\left\{ \min \left( F^{-1}\left( u;\tilde{%
+\theta}\right) ,w\right) 1_{n}+\left( 1+\gamma \right) \left[ \left(
+F^{-1}\left( u;\tilde{\theta}\right) -w\right) S\left( I_{D}-\left( 1+\gamma
+\right) S^{T}AS\right) ^{-1}1_{D}\right] \right\} c\left( u;\tilde{\theta}%
+\right) du
+\end{eqnarray*}%
+where $c\left( u;\tilde{\theta}\right) =1$ for iid uniform. Now let's
+consider the beta distribution with parameters $\alpha $ and $\beta $ such
+that $P\left( c_{i}X_{i}>w_{i}\right) =\delta _{i}$. Then we have%
+\begin{eqnarray*}
+F\left( x;\tilde{\theta}\right)  &=&\frac{1}{B\left( \alpha ,\beta \right) }%
+x^{\alpha -1}\left( 1-x\right) ^{\beta -1} \\
+&=&\frac{1}{B\left( 1,\beta \right) }\left( 1-x\right) ^{\beta -1} \\
+&=&1-\left( 1-x\right) ^{\beta }
+\end{eqnarray*}%
+Therefore%
+\begin{eqnarray*}
+\delta _{i} &=&P\left( c_{i}X_{i}>w_{i}\right)  \\
+&=&1-P\left( c_{i}X_{i}\leq w_{i}\right)  \\
+&=&1-F_{i}\left( \frac{w_{i}}{c_{i}};\tilde{\theta}\right)  \\
+&=&1-\left( 1-\left( 1-\frac{w_{i}}{c_{i}}\right) ^{\beta _{i}}\right)  \\
+&=&\left( 1-\frac{w_{i}}{c_{i}}\right) ^{\beta _{i}}
+\end{eqnarray*}%
+We then deduce that 
+\[
+\beta _{i}=\frac{\log \delta _{i}}{\log \left( 1-\frac{w_{i}}{c_{i}}\right) }
+\]%
+The marginal cdf are%
+\[
+F\left( x;\tilde{\theta}\right) =1-\left( 1-x\right) ^{\frac{\log \delta _{i}%
+}{\log \left( 1-\frac{w_{i}}{c_{i}}\right) }}
+\]%
+The inverse marginal cdf is%
+\[
+F^{-1}\left( u_{i};\tilde{\theta}\right) =1-\left( 1-u_{i}\right) ^{\frac{%
+\log \left( 1-\frac{w_{i}}{c_{i}}\right) }{\log \delta _{i}}}
+\]%
+Taking derivatives, we have%
+\begin{eqnarray*}
+\frac{\partial F^{-1}\left( u_{i};\tilde{\theta}\right) }{\partial c_{i}}
+&=&-\left( 1-u_{i}\right) ^{\frac{\log \left( 1-\frac{w_{i}}{c_{i}}\right) }{%
+\log \delta _{i}}}\frac{w_{i}\log \left( 1-u_{i}\right) }{c_{i}^{2}\log
+\delta _{i}}\left( 1-\frac{w_{i}}{c_{i}}\right) ^{-1} \\
+\frac{\partial F^{-1}\left( u_{i};\tilde{\theta}\right) }{\partial c_{j}}
+&=&0
+\end{eqnarray*}%
+Now for the whole loss%
+\begin{eqnarray*}
+&&\frac{\partial }{\partial c_{i}}E\left[ \sum_{k=1}^{n}\min \left(
+c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right) ,w_{k}\right) +\sum_{k=1}^{n}\left(
+1+\gamma \right) \left( c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right)
+-w_{k}\right) u_{k}\left( x\right) \right]  \\
+&&E\left[ \sum_{k=1}^{n}\frac{\partial }{\partial c_{i}}\left\{ \min \left(
+c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right) ,w_{k}\right) \right\}
++\sum_{k=1}^{n}\left( 1+\gamma \right) \frac{\partial }{\partial c_{i}}%
+\left\{ \left( c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right) -w_{k}\right)
+u_{k}\left( x\right) \right\} \right]  \\
+&&E\left[ \sum_{k=1}^{n}\frac{\partial }{\partial c_{i}}\left\{ \min \left(
+c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right) ,w_{k}\right) \right\}
++\sum_{k=1}^{n}\left( 1+\gamma \right) \left[ \frac{\partial }{\partial c_{i}%
+}\left\{ \left( c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right) -w_{k}\right)
+\right\} u_{k}\left( x\right) +\left( c_{k}F_{k}^{-1}\left(
+u_{k};c_{k}\right) -w_{k}\right) \frac{\partial }{\partial c_{i}}\left\{
+u_{k}\left( x\right) \right\} \right] \right]  \\
+&&E\left[ \sum_{k=1}^{n}\frac{\partial \left[ c_{k}F_{k}^{-1}\left(
+u_{k};c_{k}\right) \right] }{\partial c_{i}}1\left\{ c_{k}F_{k}^{-1}\left(
+u_{k};c_{k}\right) <w_{k}\right\} +\left( 1+\gamma \right) \sum_{k=1}^{n}%
+\frac{\partial \left[ c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right) \right] }{%
+\partial c_{i}}u_{k}\left( x\right) \right]  \\
+&&E\left[ \sum_{k=1}^{n}\left\{ 1\left\{ c_{k}x_{k}<w_{k}\right\} +\left(
+1+\gamma \right) u_{k}\left( x\right) \right\} \left( c_{k}\frac{\partial
+F_{k}^{-1}\left( u_{k};c_{k}\right) }{\partial c_{i}}+F_{k}^{-1}\left(
+u_{k};c_{k}\right) \frac{\partial c_{k}}{\partial c_{i}}\right) \right]  \\
+&&E\left[ \sum_{k=1}^{n}\left\{ 1\left\{ c_{k}x_{k}<w_{k}\right\} +\left(
+1+\gamma \right) u_{k}\left( x\right) \right\} \left( c_{k}\frac{\partial
+F_{k}^{-1}\left( u_{k};c_{k}\right) }{\partial c_{k}}+x_{k}\right) \right] 
+\end{eqnarray*}%
+\begin{eqnarray*}
+\frac{\partial }{\partial c_{i}}\left\{ \left( c_{k}F_{k}^{-1}\left(
+u_{k};c_{k}\right) -w_{k}\right) \right\}  &=&\frac{\partial }{\partial c_{i}%
+}c_{k}F_{k}^{-1}\left( u_{k};c_{k}\right)  \\
+&=&c_{k}\frac{\partial F_{k}^{-1}\left( u_{k};c_{k}\right) }{\partial c_{i}}%
++x_{k}\frac{\partial c_{k}}{\partial c_{i}} \\
+&=&%
+\begin{array}{ccc}
+-\left( 1-u_{i}\right) ^{\frac{\log \left( 1-\frac{w_{i}}{c_{i}}\right) }{%
+\log \delta _{i}}}\frac{w_{i}\log \left( 1-u_{i}\right) }{c_{i}\log \delta
+_{i}}\left( 1-\frac{w_{i}}{c_{i}}\right) ^{-1}+F_{i}^{-1}\left(
+u_{i};c_{i}\right)  & , & i=k \\ 
+0 & , & \text{otherwise}%
+\end{array}
+\\
+\frac{\partial }{\partial c_{i}}\left\{ \min \left( c_{k}F_{k}^{-1}\left(
+u_{k};c_{k}\right) ,w_{k}\right) \right\}  &=&%
+\begin{array}{ccc}
+F_{k}^{-1}\left( u_{k};c_{k}\right) +c_{k}\frac{\partial }{\partial c_{i}}%
+F_{k}^{-1}\left( u_{k};c_{k}\right)  & , & c_{k}F_{k}^{-1}\left(
+u_{k};c_{k}\right) <w_{k} \\ 
+0 & , & \text{otherwise}%
+\end{array}
+\\
+&=&%
+\begin{array}{ccc}
+x_{k}+c_{k}\frac{\partial }{\partial c_{i}}F_{k}^{-1}\left(
+u_{k};c_{k}\right)  & , & c_{k}x_{k}<w_{k} \\ 
+0 & , & \text{otherwise}%
+\end{array}
+\\
+\frac{\partial u_{k}\left( c\circ x\right) }{\partial c_{j}} &=&0
+\end{eqnarray*}%
+\begin{eqnarray*}
+\frac{\partial \left[ \left( c_{k}x_{k}-w_{k}\right) u_{k}\left( c\circ
+x\right) \right] }{\partial c_{j}} &=&u_{k}\left( c\circ x\right) \frac{%
+\partial \left( c_{k}x_{k}-w_{k}\right) }{\partial c_{j}}+\left(
+c_{k}x_{k}-w_{k}\right) \frac{\partial u_{k}\left( c\circ x\right) }{%
+\partial c_{j}} \\
+\frac{\partial \left( c_{k}x_{k}-w_{k}\right) }{\partial c_{j}} &=&x_{k}%
+\frac{\partial c_{k}}{\partial c_{j}}=\left\{ 
+\begin{array}{ccc}
+x_{k} & , & j=k \\ 
+0 & , & otherwise%
+\end{array}%
+\right.  \\
+\frac{\partial u_{k}\left( c\circ x\right) }{\partial c_{j}} &=&0
+\end{eqnarray*}%
+\begin{eqnarray*}
+\left( \nabla _{c}L\right) _{i} &=&\left\{ x_{i}+c_{i}\frac{\partial
+F_{i}^{-1}\left( u_{i};c_{i}\right) }{\partial c_{i}}\right\} 1\left\{
+c_{i}x_{i}<w_{i}\right\} +\left\{ x_{i}+c_{i}\frac{\partial F_{k}^{-1}\left(
+u_{i};c_{i}\right) }{\partial c_{i}}\right\}  \\
+&=&\left( 1\left\{ c_{i}x_{i}<w_{i}\right\} +1\right) \left\{ x_{i}+c_{i}%
+\frac{\partial F_{k}^{-1}\left( u_{i};c_{i}\right) }{\partial c_{i}}\right\} 
+\end{eqnarray*}%
+\begin{eqnarray*}
+\frac{\partial \left[ e_{k}\left( I_{D}-\left( 1+\gamma \right) A_{D}\right)
+^{-1}1_{D}\right] }{\partial A_{D}} &=&\left( 1+\gamma \right) \left(
+I_{D}-\left( 1+\gamma \right) A_{D}\right) ^{-T}e_{k}^{T}1_{D}^{T}\left(
+I_{D}-\left( 1+\gamma \right) A_{D}\right) ^{-T} \\
+&=&\left( 1+\gamma \right) \left[ e_{k}\left( I_{D}-\left( 1+\gamma \right)
+A_{D}\right) ^{-1}\right] ^{T}\left[ \left( I_{D}-\left( 1+\gamma \right)
+A_{D}\right) ^{-1}1_{D}\right] ^{T} \\
+&=&\left( 1+\gamma \right) \left( I_{D}-\left( 1+\gamma \right) A_{D}\right)
+^{-T}e_{k}^{T}u_{D}^{T}
+\end{eqnarray*}
+
+\section{Old}
+
+We would like to compute the gradient of expected losses%
+\[
+\nabla _{A}\left\{ E\left[ \sum_{k=1}^{n}\min \left( x_{k},w_{k}\right)
++\sum_{k=1}^{n}\left( x_{k}-w_{k}\right) u_{k}\left( x\right) \right]
+\right\} 
+\]%
+where $\nabla _{A}$ means the gradient with respect to the entries of the
+matrix $A$. Since $x_{k}$ and $w_{k}$ do not depend on $A$, and expectations
+are linear,%
+\[
+\nabla _{A}\left\{ E\left[ \sum_{k=1}^{n}\min \left( x_{k},w_{k}\right)
++\sum_{k=1}^{n}\left( x_{k}-w_{k}\right) u_{k}\left( x\right) \right]
+\right\} =E\sum_{k=1}^{n}\left( x_{k}-w_{k}\right) \nabla _{A}u_{k}\left(
+x\right) 
+\]%
+To compute $\nabla _{A}u_{k}\left( x\right) $, we use that%
+\[
+u_{k}\left( x\right) =\left\{ 
+\begin{array}{ccc}
+0 & , & \text{if }k\notin D\left( A\right)  \\ 
+e_{k}\left( I_{D}-\left( 1+\gamma \right) A_{D}\right) ^{-1}1_{D} & , & 
+\text{if }k\in D\left( A\right) 
+\end{array}%
+\right. 
+\]%
+where $D$ is the set of defaulting nodes, $I_{D}$ is the $\left\vert
+D\right\vert \times \left\vert D\right\vert $ identity matrix, $e_{k}$ is a
+row vector with a $1$ in column $k$ and zeros otherwise, and $A_{D}$ is the
+matrix $A$ restricted to $D$. We can write%
+\[
+A_{D}=S^{\prime }AS
+\]%
+for a matrix $S$ with dimension $n\times \left\vert D\right\vert $ 
+\[
+S_{ij}=\left\{ 
+\begin{array}{ccc}
+1 & , & \text{if }j\in D\text{ and }i\leq j \\ 
+0 & , & \text{otherwise}%
+\end{array}%
+\right. 
+\]%
+so that $A_{D}$ has dimension $\left\vert D\right\vert \times \left\vert
+D\right\vert $. For example, if $n=3$ and $D=\left\{ 1,3\right\} $ 
+\[
+S=\left[ 
+\begin{array}{cc}
+1 & 0 \\ 
+0 & 0 \\ 
+0 & 1%
+\end{array}%
+\right] 
+\]%
+and%
+\begin{eqnarray*}
+A_{D} &=&\left[ 
+\begin{array}{ccc}
+1 & 0 & 0 \\ 
+0 & 0 & 1%
+\end{array}%
+\right] \left[ 
+\begin{array}{ccc}
+a_{11} & a_{12} & a_{13} \\ 
+a_{21} & a_{22} & a_{23} \\ 
+a_{31} & a_{32} & a_{33}%
+\end{array}%
+\right] \left[ 
+\begin{array}{cc}
+1 & 0 \\ 
+0 & 0 \\ 
+0 & 1%
+\end{array}%
+\right]  \\
+&=&\left[ 
+\begin{array}{cc}
+a_{11} & a_{13} \\ 
+a_{31} & a_{33}%
+\end{array}%
+\right] 
+\end{eqnarray*}%
+We also note that $D$ depends on $A$ 
+\begin{eqnarray*}
+D\left( A\right)  &=&\left\{ i:p_{i}\left( A\right) <\bar{p}_{i}\right\}  \\
+&=&\left\{ i:\min \left\{ \bar{p}_{i},\max \left\{ \sum_{j}p_{j}\left(
+A\right) a_{ji}+c_{i}-x_{i},0\right\} \right\} <\bar{p}_{i}\right\} 
+\end{eqnarray*}%
+However, $p_{i}\left( A\right) $ is continuous in $A$, so small changes in $A
+$ can only affect $D$ if%
+\[
+p_{i}\left( A\right) =\bar{p}_{i}
+\]%
+We now compute%
+\[
+\nabla _{A}u_{k}\left( x\right) =\left\{ 
+\begin{array}{ccc}
+0 & , & \text{if }k\notin D\left( A\right)  \\ 
+\nabla _{A}e_{k}\left( I_{D}-S^{T}AS\right) ^{-1}1_{D} & , & \text{if }k\in
+D\left( A\right) 
+\end{array}%
+\right. 
+\]%
+Use the formulas%
+\begin{eqnarray*}
+\frac{\partial a^{T}X^{-1}b}{\partial X} &=&-X^{-T}ab^{T}X^{-T} \\
+\partial \left( XY\right)  &=&\left( \partial X\right) Y+X\partial Y \\
+\partial \left( S^{T}AS\right)  &=&\partial \left( S^{T}A\right) S+\left(
+S^{T}A\right) \partial S \\
+&=&\left[ \partial \left( S^{T}\right) A+S^{T}\partial A\right] S+\left(
+S^{T}A\right) \partial S \\
+&=&S^{T}\left( \partial A\right) S
+\end{eqnarray*}%
+to get%
+\begin{eqnarray*}
+\frac{\partial \left[ e_{k}\left( I_{D}-\left( 1+\gamma \right) A_{D}\right)
+^{-1}1_{D}\right] }{\partial A_{D}} &=&\left( 1+\gamma \right) \left(
+I_{D}-\left( 1+\gamma \right) A_{D}\right) ^{-T}e_{k}^{T}1_{D}^{T}\left(
+I_{D}-\left( 1+\gamma \right) A_{D}\right) ^{-T} \\
+&=&\left( 1+\gamma \right) \left[ e_{k}\left( I_{D}-\left( 1+\gamma \right)
+A_{D}\right) ^{-1}\right] ^{T}\left[ \left( I_{D}-\left( 1+\gamma \right)
+A_{D}\right) ^{-1}1_{D}\right] ^{T} \\
+&=&\left( 1+\gamma \right) \left( I_{D}-\left( 1+\gamma \right) A_{D}\right)
+^{-T}e_{k}^{T}u_{D}^{T}
+\end{eqnarray*}%
+and 
+\[
+\frac{\partial \left[ e_{k}\left( I_{D}-A_{D}\right) ^{-1}1_{D}\right] }{%
+\partial A_{D^{c}}}=0
+\]%
+where $D^{c}$ is the complement of $D$.%
+\[
+\nabla _{A}u_{k}\left( x\right) =S\left[ \nabla _{A_{D}}u_{k}\left( x\right) %
+\right] S^{T}
+\]%
+Finally, 
+\[
+E\sum_{k=1}^{n}\left( x_{k}-w_{k}\right) S\left[ \nabla _{A_{D}}u_{k}\left(
+x\right) \right] S^{T}
+\]%
+Now we compute the gradient with respect to $c$, assuming that $x_{k}$ is a
+random variable between $0$ and $1$ and thus total losses are%
+\[
+E\left[ \sum_{k=1}^{n}\min \left( c_{k}x_{k},w_{k}\right)
++\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right) u_{k}\left( c\circ x\right) %
+\right] 
+\]%
+where $c\circ x$ denotes element-wise multiplication.
+
+We compute%
+\[
+\nabla _{c}\left\{ E\left[ \sum_{k=1}^{n}\min \left( c_{k}x_{k},w_{k}\right)
++\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right) u_{k}\left( c\circ x\right) %
+\right] \right\} 
+\]%
+Using%
+\begin{eqnarray*}
+\frac{\partial \min \left( c_{k}x_{k},w_{k}\right) }{\partial c_{j}}
+&=&\left\{ 
+\begin{array}{ccc}
+x_{k} & , & c_{k}<\frac{w_{k}}{x_{k}}\text{ and }j=k \\ 
+0 & , & otherwise%
+\end{array}%
+\right.  \\
+\nabla _{c}\left\{ \min \left( c_{k}x_{k},w_{k}\right) \right\}  &=&\left( 
+\begin{array}{ccccc}
+0 & \cdots  & 1_{\left\{ c_{k}<\frac{w_{k}}{x_{k}}\right\} }x_{k} & \cdots 
+& 0%
+\end{array}%
+\right)  \\
+\sum_{k=1}^{n}\nabla _{c}\left\{ \min \left( c_{k}x_{k},w_{k}\right)
+\right\}  &=&\left( 
+\begin{array}{ccccc}
+1_{\left\{ c_{1}<\frac{w_{1}}{x_{1}}\right\} }x_{1} & \cdots  & 1_{\left\{
+c_{k}<\frac{w_{k}}{x_{k}}\right\} }x_{k} & \cdots  & 1_{\left\{ c_{n}<\frac{%
+w_{n}}{x_{n}}\right\} }x_{n}%
+\end{array}%
+\right) 
+\end{eqnarray*}%
+and%
+\begin{eqnarray*}
+\frac{\partial \left[ \left( c_{k}x_{k}-w_{k}\right) u_{k}\left( c\circ
+x\right) \right] }{\partial c_{j}} &=&u_{k}\left( c\circ x\right) \frac{%
+\partial \left( c_{k}x_{k}-w_{k}\right) }{\partial c_{j}}+\left(
+c_{k}x_{k}-w_{k}\right) \frac{\partial u_{k}\left( c\circ x\right) }{%
+\partial c_{j}} \\
+\frac{\partial \left( c_{k}x_{k}-w_{k}\right) }{\partial c_{j}} &=&x_{k}%
+\frac{\partial c_{k}}{\partial c_{j}}=\left\{ 
+\begin{array}{ccc}
+x_{k} & , & j=k \\ 
+0 & , & otherwise%
+\end{array}%
+\right.  \\
+\frac{\partial u_{k}\left( c\circ x\right) }{\partial c_{j}} &=&0
+\end{eqnarray*}%
+we get%
+\begin{eqnarray*}
+&&\nabla _{c}\left\{ E\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] \right\}  \\
+&=&E\left[ \sum_{k=1}^{n}\nabla _{c}\min \left( c_{k}x_{k},w_{k}\right)
++\sum_{k=1}^{n}\nabla _{c}\left[ \left( c_{k}x_{k}-w_{k}\right) u_{k}\left(
+c\circ x\right) \right] \right]  \\
+&=&E\left[ 
+\begin{array}{c}
+\left( 
+\begin{array}{ccccc}
+1_{\left\{ c_{1}<\frac{w_{1}}{x_{1}}\right\} }x_{1} & \cdots  & 1_{\left\{
+c_{k}<\frac{w_{k}}{x_{k}}\right\} }x_{k} & \cdots  & 1_{\left\{ c_{n}<\frac{%
+w_{n}}{x_{n}}\right\} }x_{n}%
+\end{array}%
+\right)  \\ 
++\left( 
+\begin{array}{ccccc}
+x_{1}u_{1}\left( c\circ x\right)  & \cdots  & x_{k}u_{k}\left( c\circ
+x\right)  & \cdots  & x_{n}u_{n}\left( c\circ x\right) 
+\end{array}%
+\right) 
+\end{array}%
+\right]  \\
+&=&E\left[ \left( 
+\begin{array}{ccccc}
+\left[ 1_{\left\{ c_{1}<\frac{w_{1}}{x_{1}}\right\} }+u_{1}\left( c\circ
+x\right) \right] x_{1} & \cdots  & \left[ 1_{\left\{ c_{k}<\frac{w_{k}}{x_{k}%
+}\right\} }+u_{k}\left( c\circ x\right) \right] x_{k} & \cdots  & \left[
+1_{\left\{ c_{n}<\frac{w_{n}}{x_{n}}\right\} }+u_{n}\left( c\circ x\right) %
+\right] x_{n}%
+\end{array}%
+\right) \right] 
+\end{eqnarray*}%
+We pick the parameter $\beta $ of the beta distribution with pdf%
+\[
+f\left( x\right) =\frac{1}{B\left( \alpha ,\beta \right) }x^{\alpha
+-1}x^{\beta -1}
+\]%
+and cdf%
+\[
+F\left( x\right) =\frac{1}{B\left( \alpha ,\beta \right) }%
+\int_{0}^{x}x^{\alpha -1}x^{\beta -1}dx
+\]%
+so that
+
+\begin{eqnarray*}
+\delta  &=&P\left( cx>w\right)  \\
+&=&1-F\left( \frac{w}{c},\alpha ,\beta \right)  \\
+&=&1-\frac{1}{B\left( \alpha ,\beta \right) }\int_{0}^{\frac{w}{c}}x^{\alpha
+-1}x^{\beta -1}dx
+\end{eqnarray*}%
+Solving for $\beta $ gives a solution%
+\[
+\beta =\beta \left( c,w,\delta ,\alpha \right) 
+\]%
+The CDF and PDF\ are then%
+\begin{eqnarray*}
+F\left( x;c\right)  &=&\frac{1}{B\left( \alpha ,\beta \left( c,w,\delta
+,\alpha \right) \right) }\int_{0}^{x}x^{\alpha -1}x^{\beta \left( c,w,\delta
+,\alpha \right) -1}dx \\
+f\left( x;c\right)  &=&\frac{1}{B\left( \alpha ,\beta \left( c,w,\delta
+,\alpha \right) \right) }x^{\alpha -1}x^{\beta \left( c,w,\delta ,\alpha
+\right) -1}
+\end{eqnarray*}%
+To compute 
+\[
+\nabla _{c}\left\{ E\left[ \sum_{k=1}^{n}\min \left( c_{k}x_{k},w_{k}\right)
++\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right) u_{k}\left( c\circ x\right) %
+\right] \right\} 
+\]%
+we then note that%
+\begin{eqnarray*}
+&&\nabla _{c}\left\{ E\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] \right\}  \\
+&=&\nabla _{c}\int_{0}^{1}...\int_{0}^{1}\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] f\left( x;c\right) dx_{1}...dx_{n} \\
+&=&\int_{0}^{1}...\int_{0}^{1}\nabla _{c}\left\{ \left[ \sum_{k=1}^{n}\min
+\left( c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] f\left( x;c\right) \right\}
+dx_{1}...dx_{n} \\
+&=&\int_{0}^{1}...\int_{0}^{1}\nabla _{c}\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] f\left( x;c\right) dx_{1}...dx_{n} \\
+&&+\int_{0}^{1}...\int_{0}^{1}\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] \nabla _{c}f\left( x;c\right)
+dx_{1}...dx_{n} \\
+&=&\int_{0}^{1}...\int_{0}^{1}\nabla _{c}\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] f\left( x;c\right) dx_{1}...dx_{n} \\
+&&+\int_{0}^{1}...\int_{0}^{1}L\left( x\right) \frac{\nabla _{c}f\left(
+x;c\right) }{f\left( x;c\right) }f\left( x;c\right) dx_{1}...dx_{n} \\
+&=&E\left[ \nabla _{c}\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] \right] +E\left[ L\left( x\right) \frac{%
+\nabla _{c}f\left( x;c\right) }{f\left( x;c\right) }\right] 
+\end{eqnarray*}%
+For independent random variables $x$%
+\[
+f\left( x;c\right) =\dprod\limits_{k=1}^{n}f\left( x_{k};c_{k}\right) 
+\]%
+so that%
+\[
+\frac{\nabla _{c}f\left( x;c\right) }{f\left( x;c\right) }=\left( \frac{1}{%
+f\left( x_{1};c_{1}\right) }\frac{df\left( x_{1};c_{1}\right) }{dc_{1}},..,%
+\frac{1}{f\left( x_{k};c_{k}\right) }\frac{df\left( x_{k};c_{k}\right) }{%
+dc_{k}},..,\frac{1}{f\left( x_{n};c_{n}\right) }\frac{df\left(
+x_{n};c_{n}\right) }{dc_{n}}\right) 
+\]%
+Assume $\alpha =1$. Then%
+\begin{eqnarray*}
+\delta  &=&1-\frac{1}{B\left( 1,\beta \right) }\int_{0}^{\frac{w}{c}%
+}x^{\beta -1}dx \\
+\delta  &=&\left( 1-\frac{w}{c}\right) ^{\beta } \\
+\beta  &=&\frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }
+\end{eqnarray*}%
+and%
+\begin{eqnarray*}
+f_{k}\left( x;1,\beta \right)  &=&\beta \left( 1-x\right) ^{\beta -1} \\
+f_{k}\left( x;1,\frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }%
+\right)  &=&\frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }\left(
+1-x\right) ^{\frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }-1} \\
+\frac{1}{f\left( x_{k};c_{k}\right) }\frac{df\left( x_{k};c_{k}\right) }{%
+dc_{k}} &=&\frac{1}{\frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }%
+\left( 1-x\right) ^{\frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }-1}%
+}\left( \left\{ \frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }%
+\right\} \frac{d}{dc}\left\{ \left( 1-x\right) ^{\frac{\log \delta }{\log
+\left( 1-\frac{w}{c}\right) }-1}\right\} +\left\{ \left( 1-x\right) ^{\frac{%
+\log \delta }{\log \left( 1-\frac{w}{c}\right) }-1}\right\} \frac{d}{dc}%
+\left\{ \frac{\log \delta }{\log \left( 1-\frac{w}{c}\right) }\right\}
+\right)  \\
+&=&\frac{1}{\left( 1-x\right) ^{\frac{\log \delta }{\log \left( 1-\frac{w}{c}%
+\right) }}}\frac{d}{dc}\left\{ \left( 1-x\right) ^{\frac{\log \delta }{\log
+\left( 1-\frac{w}{c}\right) }}\right\} -\frac{1}{\log \left( 1-\frac{w}{c}%
+\right) }\frac{1}{\left( c-w\right) }\frac{w}{c} \\
+&=&-\frac{w\left( \log \left( 1-\frac{w}{c}\right) +\log \left( 1-x\right)
+\log \left( \delta \right) \right) }{c\left( c-w\right) \log \left( 1-\frac{w%
+}{c}\right) ^{2}}
+\end{eqnarray*}
+
+If we use a gaussian copula with correlation matrix $R$ and marginals 
+\[
+f\left( x_{k};c_{k}\right) =\frac{1}{B\left( \alpha _{k},\beta \left(
+c_{k},w_{k},\delta _{k},\alpha _{k}\right) \right) }x^{\alpha
+_{k}-1}x^{\beta \left( c_{k},w_{k},\delta _{k},\alpha _{k}\right) -1}
+\]%
+the density of the copula is%
+\[
+c_{R}^{Gauss}\left( u\right) =\frac{1}{\sqrt{\det R}}\exp \left( -\frac{1}{2}%
+\left( 
+\begin{array}{c}
+\Phi ^{-1}\left( u_{1}\right)  \\ 
+... \\ 
+\Phi ^{-1}\left( u_{n}\right) 
+\end{array}%
+\right) ^{T}\left( R^{-1}-I\right) \left( 
+\begin{array}{c}
+\Phi ^{-1}\left( u_{1}\right)  \\ 
+... \\ 
+\Phi ^{-1}\left( u_{n}\right) 
+\end{array}%
+\right) \right) 
+\]%
+Thus,%
+\[
+f\left( x;c\right) =c_{R}^{Gauss}\left( F\left( x_{1};c_{1}\right)
+,...,F\left( x_{n};c_{n}\right) \right) f\left( x_{1};c_{1}\right)
+...f\left( x_{n};c_{n}\right) 
+\]%
+We can now compute the $i^{th}$ component of $\frac{\nabla _{c}f\left(
+x;c\right) }{f\left( x;c\right) }:$ 
+\[
+c_{R,k}^{Gauss}\left( F\left( x_{1};c_{1}\right) ,...,F\left(
+x_{n};c_{n}\right) \right) f\left( x_{k};c_{k}\right) \frac{df\left(
+x_{k};c_{k}\right) }{dc_{k}}+c_{R}^{Gauss}\left( F\left( x_{1};c_{1}\right)
+,...,F\left( x_{n};c_{n}\right) \right) \frac{1}{f\left( x_{k};c_{k}\right) }%
+\frac{df\left( x_{k};c_{k}\right) }{dc_{k}}
+\]
+
+\bigskip 
+
+\bigskip 
+
+Try%
+\begin{eqnarray*}
+&&\nabla _{c}\left\{ E\left[ \sum_{k=1}^{n}\min \left( c_{k}F^{-1}\left(
+u_{k};c_{k}\right) ,w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}F^{-1}\left(
+u_{k};c_{k}\right) -w_{k}\right) u_{k}\left( c\circ F^{-1}\left( x\right)
+\right) \right] \right\}  \\
+&=&\nabla _{c}\left\{ E\left[ \sum_{k=1}^{n}\min \left(
+c_{k}x_{k},w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}x_{k}-w_{k}\right)
+u_{k}\left( c\circ x\right) \right] \right\}  \\
+&&+\left\{ E\left[ \sum_{k=1}^{n}\min \left( c_{k}\nabla _{c}F^{-1}\left(
+u_{k};c_{k}\right) ,w_{k}\right) +\sum_{k=1}^{n}\left( c_{k}\nabla
+_{c}F^{-1}\left( u_{k};c_{k}\right) -w_{k}\right) u_{k}\left( c\circ
+F^{-1}\left( x\right) \right) \right] \right\} 
+\end{eqnarray*}
+
+\end{document}
