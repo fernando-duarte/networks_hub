@@ -1,17 +1,19 @@
 using Pkg
 Pkg.build("HDF5")
 Pkg.add("JLD")
-Pkg.add("SpecialFunctions")
 Pkg.build("SpecialFunctions")
-Pkg.add("FFTW")
+Pkg.add("SpecialFunctions")
 Pkg.build("FFTW")
+Pkg.add("FFTW")
 Pkg.add("PATHSolver")
-Pkg.build("PATHSolver")
-Pkg.add("SLEEFPirates")
 Pkg.build("SLEEFPirates")
+Pkg.add("SLEEFPirates")
 Pkg.add("IterTools")
 Pkg.add("Tracker")
 Pkg.add("InfiniteOpt")
+Pkg.build("DiffEqBase")
+Pkg.add("DiffEqBase")
+Pkg.add("DistributionsAD")
 
 # restart kernel after running the lines above
 using Pkg
@@ -21,7 +23,6 @@ Pkg.add("Missings")
 Pkg.add("JuMP")
 Pkg.add("Ipopt")
 Pkg.add("Complementarity")
-Pkg.add("DistributionsAD")
 Pkg.add("Zygote")
 Pkg.add(Pkg.PackageSpec(url="https://github.com/SciML/Quadrature.jl", rev="master"))
 Pkg.add(Pkg.PackageSpec(url="https://github.com/JuliaDiff/ForwardDiff.jl", rev="master"))
@@ -30,13 +31,14 @@ Pkg.add(Pkg.PackageSpec(url="https://github.com/giordano/Cuba.jl", rev="master")
 Pkg.add("Cubature")
 Pkg.add("HCubature")
 Pkg.add("PlotlyBase");Pkg.add("PlotlyJS"); Pkg.add("ORCA")
+Pkg.add("NLopt")
  
 using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Complementarity, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
 using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Plots, InfiniteOpt
 plotly(ticks=:native)  
 
-N = 50 # keep largest `N' nodes by assets
+N = 10 # keep largest `N' nodes by assets
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -45,7 +47,6 @@ unique!(data) # delete duplicate rows, use `nonunique(data)` to see if there are
 data = data[isequal.(data.qt_dt,195), :] # keep quarter == 195 = 2008q4
 sort!(data, :assets, rev = true)
 data = data[1:N,:] # keep small number of nodes, for testing
-#N = size(data,1) # number of nodes
 units = 1e6;
 data[:,[:w, :c, :assets, :p_bar, :b]] .= data[!,[:w, :c, :assets, :p_bar, :b]]./units
 # data.b[:] .= missing
@@ -74,19 +75,6 @@ c0 =  data_nm.c
 b0 = data_nm.b
 α0 = 1.0*ones(N)
 β0= 50.0*ones(N) 
-# filling in guesses for beta so feel free to change
-#for i=1:N
-#    function ff!(F, x)
-#        F[1] = 1-cdf(Beta(α0[i],x[1]),w[i]/c0[i])-delta[i] 
-#    end
-#    if i==1
-#        sol = nlsolve(ff!,[10.0])
-#    else
-#        sol = nlsolve(ff!,[1.0])
-#    end
-#    @test converged(sol)
-#    push!(β0,sol.zero[1])
-#end
 
 # Setting up model 
 m = InfiniteModel(Ipopt.Optimizer);
@@ -98,7 +86,7 @@ m = InfiniteModel(Ipopt.Optimizer);
 @infinite_variable(m, p[i=1:N](x), start = 0) # clearing vector. 
 @hold_variable(m, c[i=1:N]) #outside assets for node i, 
 @hold_variable(m, b[i=1:N]) #outside liabilities for node i
-@hold_variable(m, A[i=1:N, j=1:N]) #net paymenets scaled by total liabilites for firm i between nodes i and j
+@hold_variable(m, A[i=1:N, j=1:N]) #net payments scaled by total liabilites for firm i between nodes i and j
 @hold_variable(m, α[i=1:N]) # parameter that determines the shocks
 @hold_variable(m, β[i=1:N]) # parameter that determines shocks 
 
@@ -133,21 +121,31 @@ end
 
 # Clearing Vector Constraints
 #@constraint(m, p == min(p_bar, max(zeros(N), transpose(A)*p + c - x))) 
-@constraint(m, p .== transpose(A)*p + c - x) 
+
+@constraint(m, p .== transpose(A)*p + c - x)
+
+## These constraitns were working but then broke
+#for i = 1:N
+#    @BDconstraint(m, ((transpose(A)*p+c-x)[i] in [-1000000.0,-1e-16]), p[i] == 0) # transpose(A) * p + c -x <= 0 
+#    @BDconstraint(m, ((transpose(A)*p+c-x)[i] in [0.0, p_bar[i]]), p[i] == (transpose(A)*p+c-x)[i])
+#    @BDconstraint(m, ((transpose(A)*p+c-x)[i] in [p_bar[i]+1e-9, 1000000.0]), p[i] == p_bar[i])
+#end
 
 # Distributional constraints
-#prob_default(x,c,w) = 1 ./(1 .+exp.(-1000*(x.*c-w))) # approximates indicator function of x*c>=w
-#JuMP.register(m, :prob_default, 3, prob_default)
+#delta = Pr(x*c >= w)
+M = 10000
+@infinite_variable(m, y[i=1:N](x), Bin)
+@constraint(m, w .- c .* x .<= y .* M)
+for i = 1:N
+    @constraint(m, expect(1 .- y[i], x[i]) == delta[i])
+end
 
-#for i = 1:N
-#    @NLconstraint(m, delta[i] == 1 ./(1 .+exp.(-1000*(x[i].*c[i]-w[i])))) #ensuring prob x*c >= w = delta
-#end
 
 # Setting up objective function
 @objective(m, Max, expect(sum(c.*x + p_bar - p),x)) # min/max E[(ci * xi + p_bar i - pi(x)))]
 
 # Training Model
-@time optimize!(m);
+@time JuMP.optimize!(m);
 
 ## Checking Solution 
 # variable values after training

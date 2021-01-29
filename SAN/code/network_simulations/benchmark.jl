@@ -1,3 +1,4 @@
+import Pkg; Pkg.add("Pkg")
 using Pkg
 Pkg.build("HDF5")
 Pkg.add("JLD")
@@ -5,12 +6,14 @@ Pkg.add("SpecialFunctions")
 Pkg.build("SpecialFunctions")
 Pkg.add("FFTW")
 Pkg.build("FFTW")
-Pkg.add("PATHSolver")
 Pkg.build("PATHSolver")
-Pkg.add("SLEEFPirates")
+Pkg.add("PATHSolver")
 Pkg.build("SLEEFPirates")
+Pkg.add("SLEEFPirates")
 Pkg.add("IterTools")
 Pkg.add("Tracker")
+Pkg.build("DiffEqBase")
+Pkg.add("DiffEqBase")
 
 # restart kernel after running the lines above
 using Pkg
@@ -32,10 +35,10 @@ Pkg.add("PlotlyBase");Pkg.add("PlotlyJS"); Pkg.add("ORCA")
  
 using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Complementarity, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
 using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
-using Plots
+using Plots, Profile
 plotly(ticks=:native)  
 
-N = 2 # keep largest `N' nodes by assets
+N = 10 # keep largest `N' nodes by assets
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -80,7 +83,7 @@ for i=1:N
     if i==1
         sol = nlsolve(ff!,[50.0])
     else
-        sol = nlsolve(ff!,[β0[i-1]])
+        sol = nlsolve(ff!,[1.0])
     end
     @test converged(sol)
     push!(β0,sol.zero[1])
@@ -172,7 +175,7 @@ JuMP.register(m, :dist_cdf, 3, dist_cdf, autodiff=true)
 @NLexpression(m,wc[i=1:N],w[i]/c[i])
 for i in 1:N
     @eval ($(Symbol("vv$i"))) = [α[$i],β[$i],wc[$i]]
-    @eval @NLconstraint(m,dist_cdf(($(Symbol("vv$i")))...)== delta[$i]) 
+   @eval @NLconstraint(m,dist_cdf(($(Symbol("vv$i")))...)== delta[$i]) 
 end
 
 [fix(c[i], data.c[i]; force=true) for i  in nm_c]
@@ -182,7 +185,7 @@ vars = [α...,β...,A...,b...,c...]
 @NLobjective(m, Max , ev(vars...)  )
 
 unset_silent(m)
-JuMP.optimize!(m)
+@time JuMP.optimize!(m)
 
 st0 = termination_status(m)
 obj0 = objective_value(m)
