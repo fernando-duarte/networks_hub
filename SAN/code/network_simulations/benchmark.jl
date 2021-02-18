@@ -38,7 +38,7 @@ using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Plots, Profile
 plotly(ticks=:native)  
 
-N = 10 # keep largest `N' nodes by assets
+N = 20 # keep largest `N' nodes by assets
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -178,8 +178,8 @@ for i in 1:N
    @eval @NLconstraint(m,dist_cdf(($(Symbol("vv$i")))...)== delta[$i]) 
 end
 
-[fix(c[i], data.c[i]; force=true) for i  in nm_c]
-[fix(b[i], data.b[i]; force=true) for i  in nm_b]
+#[fix(c[i], data.c[i]; force=true) for i  in nm_c] #fixing c to data
+#[fix(b[i], data.b[i]; force=true) for i  in nm_b] #fixing b to data
 JuMP.register(m, :ev, 4*N+N^2, ev, autodiff=true)
 vars = [α...,β...,A...,b...,c...]
 @NLobjective(m, Max , ev(vars...)  )
@@ -213,6 +213,11 @@ tol = 1e-5
     @test norm(delta-cdf_opt)<0.01
     
 end
+
+# Displaying output in batch solution
+
+
+
 
 #=
 function clearing_vec!(F, p, x)

@@ -1,44 +1,10 @@
 using Pkg
-Pkg.build("HDF5")
-Pkg.add("JLD")
-Pkg.build("SpecialFunctions")
-Pkg.add("SpecialFunctions")
-Pkg.build("FFTW")
-Pkg.add("FFTW")
-Pkg.add("PATHSolver")
-Pkg.build("SLEEFPirates")
-Pkg.add("SLEEFPirates")
-Pkg.add("IterTools")
-Pkg.add("Tracker")
-Pkg.add("InfiniteOpt")
-Pkg.build("DiffEqBase")
-Pkg.add("DiffEqBase")
-Pkg.add("DistributionsAD")
+Pkg.add(Pkg.PackageSpec(;name="InfiniteOpt", version="0.3.2"))
 
-# restart kernel after running the lines above
-using Pkg
-Pkg.add("DataFrames")
-Pkg.add("XLSX")
-Pkg.add("Missings")
-Pkg.add("JuMP")
-Pkg.add("Ipopt")
-Pkg.add("Complementarity")
-Pkg.add("Zygote")
-Pkg.add(Pkg.PackageSpec(url="https://github.com/SciML/Quadrature.jl", rev="master"))
-Pkg.add(Pkg.PackageSpec(url="https://github.com/JuliaDiff/ForwardDiff.jl", rev="master"))
-Pkg.add(Pkg.PackageSpec(url="https://github.com/JuliaDiff/FiniteDiff.jl", rev="master"))
-Pkg.add(Pkg.PackageSpec(url="https://github.com/giordano/Cuba.jl", rev="master"))
-Pkg.add("Cubature")
-Pkg.add("HCubature")
-Pkg.add("PlotlyBase");Pkg.add("PlotlyJS"); Pkg.add("ORCA")
-Pkg.add("NLopt")
- 
-using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Complementarity, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
-using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
-using Plots, InfiniteOpt
-plotly(ticks=:native)  
+using LinearAlgebra, DataFrames, XLSX, JuMP, Ipopt, Distributions, Random
+using InfiniteOpt, Test
 
-N = 10 # keep largest `N' nodes by assets
+N = 2 # keep largest `N' nodes by assets
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -49,8 +15,6 @@ sort!(data, :assets, rev = true)
 data = data[1:N,:] # keep small number of nodes, for testing
 units = 1e6;
 data[:,[:w, :c, :assets, :p_bar, :b]] .= data[!,[:w, :c, :assets, :p_bar, :b]]./units
-# data.b[:] .= missing
-# data.c[:] .= missing
 
 col_with_miss = names(data)[[any(ismissing.(col)) for col = eachcol(data)]] # columns with at least one missing
 data_nm = coalesce.(data, data.assets/1.5) # replace missing by a value
@@ -73,34 +37,38 @@ rng =  Random.seed!(123)
 A0 = zeros(N,N)
 c0 =  data_nm.c 
 b0 = data_nm.b
-α0 = 1.0*ones(N)
-β0= 50.0*ones(N) 
+#α0 = 1.0*ones(N)
+#β0= 50.0*ones(N) 
+α0 = [0.8036633601825971, 2.3770632915620182] 
+β0 = [50.860581908282924, 28.442901287225475] 
+α0 = α0[1:N]
+β0 = β0[1:N]
 
 # Setting up model 
 m = InfiniteModel(Ipopt.Optimizer);
 
 # Parameter everything depends upon (shocks to each node)
-@infinite_parameter(m, x[i=1:N] in Beta(α0[i],β0[i])) #parameter of shocks
+@infinite_parameter(m, x[i=1:N] in Beta(α0[i],β0[i]), num_supports = 10000) #parameter of shocks
 
 # setting up variables, starting positino, and constraints
 @infinite_variable(m, p[i=1:N](x), start = 0) # clearing vector. 
-@hold_variable(m, c[i=1:N]) #outside assets for node i, 
-@hold_variable(m, b[i=1:N]) #outside liabilities for node i
-@hold_variable(m, A[i=1:N, j=1:N]) #net payments scaled by total liabilites for firm i between nodes i and j
-@hold_variable(m, α[i=1:N]) # parameter that determines the shocks
-@hold_variable(m, β[i=1:N]) # parameter that determines shocks 
-
-for i = 1:N
-    @constraint(m, w[i] <= c[i] <= data.assets[i]) # outside assets greater than networth and lower than total assets
-    @constraint(m, 0 <= b[i] <= data.p_bar[i]) #outside liabilities greater than 0 and less than total liabilities
-    @constraint(m, 0.8 <= α[i] <= 3.0)
-    @constraint(m, 1.0 <= β[i] <= 150.0)
-end
-
-
+@hold_variable(m, c[i=1:N]  >= 0) #outside assets for node i, 
+@hold_variable(m, b[i=1:N] >= 0) #outside liabilities for node i
+@hold_variable(m, A[i=1:N, j=1:N] >= 0) #net payments scaled by total liabilites for firm i between nodes i and j
+@hold_variable(m, α[i=1:N] >= 0) # parameter that determines the shocks
+@hold_variable(m, β[i=1:N] >= 0) # parameter that determines shocks 
+@constraint(m, w .<= c .<= data.assets) # outside assets greater than networth and lower than total assets
+@constraint(m, 0 .<= b .<= data.p_bar) #outside liabilities greater than 0 and less than total liabilities
+@constraint(m, 0.8 .<= α .<= 3.0) 
+@constraint(m, 1.0 .<= β .<= 150.0)
 @constraint(m, -sum(A,dims=2).*data.p_bar .+ data.p_bar .==  b ) # payments to other nodes add up to inside liabilities f
 @constraint(m, A' * data.p_bar .== data.assets .- c ) # payments from other nodes add up to inside assets d
 
+# Fixing variables
+@constraint(m, α .== α0)
+@constraint(m, β .== β0)
+
+# Constraints for A
 for i = 1:N
     for j = 1:N
         @constraint(m, 0<= A[i, j] <= 1)
@@ -120,32 +88,22 @@ for i=1:N
 end
 
 # Clearing Vector Constraints
-#@constraint(m, p == min(p_bar, max(zeros(N), transpose(A)*p + c - x))) 
-
-@constraint(m, p .== transpose(A)*p + c - x)
-
-## These constraitns were working but then broke
-#for i = 1:N
-#    @BDconstraint(m, ((transpose(A)*p+c-x)[i] in [-1000000.0,-1e-16]), p[i] == 0) # transpose(A) * p + c -x <= 0 
-#    @BDconstraint(m, ((transpose(A)*p+c-x)[i] in [0.0, p_bar[i]]), p[i] == (transpose(A)*p+c-x)[i])
-#    @BDconstraint(m, ((transpose(A)*p+c-x)[i] in [p_bar[i]+1e-9, 1000000.0]), p[i] == p_bar[i])
-#end
+#@constraint(m, p == min(p_bar, max(zeros(N), (1+g0) .* transpose(A)*p + c - x .* c .- g0.*p_bar))) 
+@constraint(m, p .== (1+g0) .* transpose(A)*p + c - x .* c .- g0.*p_bar)
 
 # Distributional constraints
 #delta = Pr(x*c >= w)
-M = 10000
-@infinite_variable(m, y[i=1:N](x), Bin)
-@constraint(m, w .- c .* x .<= y .* M)
-for i = 1:N
-    @constraint(m, expect(1 .- y[i], x[i]) == delta[i])
-end
-
+#@infinite_variable(m, y[i=1:N](x), Bin)
+#@constraint(m, w .- c .* x .<= y .* M)
+#for i = 1:N
+#    @constraint(m, expect(1 .- y[i], x[i]) == delta[i])
+#end
 
 # Setting up objective function
-@objective(m, Max, expect(sum(c.*x + p_bar - p),x)) # min/max E[(ci * xi + p_bar i - pi(x)))]
+@objective(m, Min, expect(sum(c.*x + p_bar - p),x)) # min/max E[(ci * xi + p_bar i - pi(x)))]
 
 # Training Model
-@time JuMP.optimize!(m);
+@time optimize!(m);
 
 ## Checking Solution 
 # variable values after training
@@ -154,6 +112,8 @@ bsol0 = JuMP.value.(b)
 Asol0 = JuMP.value.(A)
 αsol0 = JuMP.value.(α)
 βsol0 = JuMP.value.(β)
+psol0 = JuMP.value.(p)
+objective = objective_value(m)
 tol = 1e-5
 
 #tests 
@@ -166,3 +126,16 @@ tol = 1e-5
     @test all(-tol .<=bsol0.<=data.p_bar)
     @test all(-tol .<=csol0.<=data.assets)   
 end
+
+# Displaying output in batch solution
+print("c solution = $csol0 \n")
+print("c initial = $c0 \n")
+print("b solution = $bsol0 \n")
+print("b initial = $b0 \n")
+print("A solution = $Asol0 \n")
+print("A initial = $A0 \n")
+print("α solution = $αsol0 \n")
+print("α initial = $α0 \n")
+print("β solution = $βsol0 \n")
+print("β initial = $β0 \n")
+print("Final value = $objective \n")

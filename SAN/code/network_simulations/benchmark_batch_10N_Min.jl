@@ -27,8 +27,8 @@ Pkg.add(Pkg.PackageSpec(url="https://github.com/JuliaDiff/FiniteDiff.jl", rev="m
 Pkg.add(Pkg.PackageSpec(url="https://github.com/giordano/Cuba.jl", rev="master"))
 Pkg.add("Cubature")
 Pkg.add("HCubature")
-Pkg.add("PlotlyBase");Pkg.add("PlotlyJS"); Pkg.add("ORCA")
- 
+Pkg.add("PlotlyBase");Pkg.add("PlotlyJS"); Pkg.add("ORCA"); Pkg.add("CSV")
+
 using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
 using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Plots, Profile
@@ -138,6 +138,7 @@ ev(ic...)
 
 # set up optimization
 # m = Model(with_optimizer(Ipopt.Optimizer, start_with_resto="yes", linear_solver="mumps",max_iter=10000,hessian_approximation="limited-memory"))
+
 m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>100000,"print_level"=>5))
 
 @variable(m, 0.8<=α[i=1:N]<=3.0, start = α0[i]) 
@@ -149,18 +150,17 @@ m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>100000,"print_le
 
 @constraint(m, -sum(A,dims=2).*data.p_bar .+ data.p_bar .==  b ) # payments to other nodes add up to inside liabilities f
 @constraint(m, A' * data.p_bar .== data.assets .- c ) # payments from other nodes add up to inside assets d
-
 # liabilities are net liabilities: A[i,i]=0 and A[i,j]A[j,i]=0
 @constraint(m, [i = 1:N], A[i,i]==0)
 for i=1:N
     j=1
     while j < i
-        @constraint(m, 0 == A[i,j] * A[j,i])
+       @constraint(m, 0 == A[i,j] * A[j,i])
         j += 1
     end
 end
 
-# register max and min non-linear functions
+    # register max and min non-linear functions
 maxfun(n1, n2) = max(n1, n2)
 minfun(n1, n2) = min(n1, n2)
 JuMP.register(m, :maxfun, 2, maxfun, autodiff=true)
@@ -171,17 +171,22 @@ JuMP.register(m, :dist_cdf, 3, dist_cdf, autodiff=true)
 @NLexpression(m,wc[i=1:N],w[i]/c[i])
 for i in 1:N
     @eval ($(Symbol("vv$i"))) = [α[$i],β[$i],wc[$i]]
-   @eval @NLconstraint(m,dist_cdf(($(Symbol("vv$i")))...)== delta[$i]) 
+    @eval @NLconstraint(m,dist_cdf(($(Symbol("vv$i")))...)== delta[$i]) 
 end
 
 #[fix(c[i], data.c[i]; force=true) for i  in nm_c] #fixing c to data
-[fix(b[i], data.b[i]; force=true) for i  in nm_b] #fixing b to data
+#[fix(b[i], data.b[i]; force=true) for i  in nm_b] #fixing b to data
 JuMP.register(m, :ev, 4*N+N^2, ev, autodiff=true)
 vars = [α...,β...,A...,b...,c...]
-@NLobjective(m, Max , ev(vars...)  )
+@NLobjective(m, Min, ev(vars...)  )
 
 unset_silent(m)
-@time JuMP.optimize!(m)
+
+function solve()
+    @time JuMP.optimize!(m)
+end
+
+solve()
 
 st0 = termination_status(m)
 obj0 = objective_value(m)
@@ -192,6 +197,7 @@ bsol0 = JuMP.value.(b)
 Asol0 = JuMP.value.(A)
 αsol0 = JuMP.value.(α)
 βsol0 = JuMP.value.(β)
+objective = objective_value(m)
 
 cdf_pkg = [1-cdf(Beta(αsol0[i],βsol0[i]),w[i]/csol0[i]) for i=1:N]
 cdf_opt = [dist_cdf([αsol0[i],βsol0[i],w[i]/csol0[i] ]...) for i=1:N]
@@ -212,13 +218,30 @@ end
 
 # Displaying output in batch solution
 
-print("c solution = $csol0")
-print("c initial = $c0")
-print("b solution = $bsol0")
-print("b initial = $b0")
-print("A solution = $Asol0")
-print("A initial = $A0")
-print("α solution = $αsol0")
-print("α initial = $α0")
-print("β solution = $βsol0")
-print("β initial = $β0")
+print("c solution = $csol0 \n")
+print("c initial = $c0 \n")
+print("b solution = $bsol0 \n")
+print("b initial = $b0 \n")
+print("A solution = $Asol0 \n")
+print("A initial = $A0 \n")
+print("α solution = $αsol0 \n")
+print("α initial = $α0 \n")
+print("β solution = $βsol0 \n")
+print("β initial = $β0 \n")
+print("Final value = $objective \n")
+
+## Exporting Results to csv
+data_out= DataFrame()
+data_out.n = N * ones(N)
+data_out.c = csol0
+data_out.b = bsol0
+data_out.α = αsol0
+data_out.β = βsol0
+data_out.A1 = Asol0[:,1]
+data_out.A2 = Asol0[:,2]
+data_out.A3 = Asol0[:,3]
+data_out.A4 = Asol0[:,4]
+data_out.A5 = Asol0[:,5]
+
+using CSV
+CSV.write("N5_output.csv",data_out)
