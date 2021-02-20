@@ -1,40 +1,26 @@
-import Pkg; Pkg.add("Pkg")
-using Pkg
-Pkg.build("HDF5")
-Pkg.add("JLD")
-Pkg.add("SpecialFunctions")
-Pkg.build("SpecialFunctions")
-Pkg.add("FFTW")
-Pkg.build("SLEEFPirates")
-Pkg.add("SLEEFPirates")
-Pkg.add("IterTools")
-Pkg.add("Tracker")
-Pkg.build("DiffEqBase")
-Pkg.add("DiffEqBase")
+# import Pkg
+# Pkg.add("Quadrature")
+# Pkg.add("DataFrames")
+# Pkg.add("XLSX")
+# Pkg.add("Missings")
+# Pkg.add("JuMP")
+# Pkg.add("Ipopt")
+# Pkg.add("DistributionsAD")
+# Pkg.add("SpecialFunctions")
+# Pkg.add("ForwardDiff")
+# Pkg.add("FiniteDiff")
+# Pkg.add("Zygote")
+# Pkg.add("Cuba")
+# Pkg.add("Cubature")
+# Pkg.add("HCubature")
 
-# restart kernel after running the lines above
-using Pkg
-Pkg.add("DataFrames")
-Pkg.add("XLSX")
-Pkg.add("Missings")
-Pkg.add("JuMP")
-Pkg.add("Ipopt")
-Pkg.add("DistributionsAD")
-Pkg.add("Zygote", )
-Pkg.add(Pkg.PackageSpec(url="https://github.com/SciML/Quadrature.jl", rev="master"))
-Pkg.add(Pkg.PackageSpec(url="https://github.com/JuliaDiff/ForwardDiff.jl", rev="master"))
-Pkg.add(Pkg.PackageSpec(url="https://github.com/JuliaDiff/FiniteDiff.jl", rev="master"))
-Pkg.add(Pkg.PackageSpec(url="https://github.com/giordano/Cuba.jl", rev="master"))
-Pkg.add("Cubature")
-Pkg.add("HCubature")
-Pkg.add("PlotlyBase");Pkg.add("PlotlyJS"); Pkg.add("ORCA")
- 
+using Quadrature
 using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
-using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
+using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Plots, Profile
 plotly(ticks=:native)  
 
-N = 2 # keep largest `N' nodes by assets
+N = 5 # keep largest `N' nodes by assets
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
