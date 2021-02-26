@@ -34,7 +34,7 @@ using Quadrature, ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Plots, Profile
 plotly(ticks=:native)  
 
-N = 2 # keep largest `N' nodes by assets
+N = 5 # keep largest `N' nodes by assets
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -109,7 +109,7 @@ function dist_pdf_mv(x,params)
                min.(p_bar, max.((1 .+g0).*(A'*p .+ c .- x.*c) .- g0.*p_bar,0))
             end
             contraction_iter(x, n::Integer) = n <= 0 ? p_bar  : contraction(x,contraction_iter(x,n-1))
-            loss_x(x) = -sum(contraction_iter(x,2)).*dist_pdf(x,[α...,β...])   
+            loss_x(x) = -sum(contraction_iter(x,10)).*dist_pdf(x,[α...,β...])   
             loss_x(x)*joint_pdf
 end
 

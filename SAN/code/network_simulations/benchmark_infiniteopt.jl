@@ -1,10 +1,18 @@
-using Pkg
-Pkg.add(Pkg.PackageSpec(;name="InfiniteOpt", version="0.3.2"))
+import Pkg; Pkg.add("Cbc")
+import Pkg; Pkg.add("Juniper")
+import Pkg; Pkg.add("JuMP")
+import Pkg; Pkg.add("InfiniteOpt")
+import Pkg; Pkg.add("Ipopt")
+import Pkg; Pkg.add("SCIP")
+import Pkg; Pkg.add("XLSX")
+import Pkg; Pkg.add("DataFrames")
+import Pkg; Pkg.add("Random")
 
-using LinearAlgebra, DataFrames, XLSX, JuMP, Ipopt, Distributions, Random
-using InfiniteOpt, Test
+using InfiniteOpt, JuMP, Distributions, LinearAlgebra, Random
+using XLSX, DataFrames
+using Juniper, Ipopt, Cbc, SCIP
 
-N = 2 # keep largest `N' nodes by assets
+N = 5 # keep largest `N' nodes by assets
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -31,6 +39,7 @@ assets = data.assets
 delta = data.delta
 w= data.w
 g0 = 0.05   # bankruptcy cost
+M = 1000 #large M
 
 # initial guess
 rng =  Random.seed!(123)
@@ -39,19 +48,26 @@ c0 =  data_nm.c
 b0 = data_nm.b
 #α0 = 1.0*ones(N)
 #β0= 50.0*ones(N) 
-α0 = [0.8036633601825971, 2.3770632915620182] 
-β0 = [50.860581908282924, 28.442901287225475] 
-α0 = α0[1:N]
-β0 = β0[1:N]
 
-# Setting up model 
-m = InfiniteModel(Ipopt.Optimizer);
+## Plugging in answers from benchmark_comp
+α0 = [1.9769572880132678, 2.03241259121659, 1.9932613374527037, 1.87706227793852, 1.6069831835195945] 
+β0 = [52.560963982981754, 40.34375025060937, 47.902760862643134, 78.19354871489449, 104.17269222248204] 
+c0 = [1.451636125, 1.38565475, 1.516806125, 1.158976375, 1.0802461084137611] 
+b0 = [1.2761951138380403, 1.7885790392572256, 1.6398795667566521, 1.206356349290088, 0.039981914271755244] 
+A0 = [0.0 0.14133583887525003 0.15110396086528224 0.07168597756011581 1.2421834356036085e-45; 1.6219083799719297e-46 1.2005708277365943e-46 0.001113034911629969 0.0021575868855880937 6.201883233297931e-47; 0.0 0.0 1.155259280558607e-45 0.0017754459191141763 0.000340912355544804; 0.0 0.0 0.0 2.039381281484266e-46 0.0008006562534731075; 0.7006089517923049 0.26066963219151473 6.353882944741388e-46 0.0 0.0] 
 
-# Parameter everything depends upon (shocks to each node)
-@infinite_parameter(m, x[i=1:N] in Beta(α0[i],β0[i]), num_supports = 10000) #parameter of shocks
+# Initialize the  model 
 
-# setting up variables, starting positino, and constraints
-@infinite_variable(m, p[i=1:N](x), start = 0) # clearing vector. 
+m = InfiniteModel(SCIP.Optimizer)
+
+# Define the random parameters
+@infinite_parameter(m, x[1:N] in Beta(1.0, 50.0), num_supports = 1000) 
+
+# Define the variables
+@infinite_variable(m, p[1:N](x)) # clearing vector. 
+@infinite_variable(m, z1[1:N](x))
+
+# Define A as a matrix of variables: 
 @hold_variable(m, c[i=1:N]  >= 0) #outside assets for node i, 
 @hold_variable(m, b[i=1:N] >= 0) #outside liabilities for node i
 @hold_variable(m, A[i=1:N, j=1:N] >= 0) #net payments scaled by total liabilites for firm i between nodes i and j
@@ -64,9 +80,6 @@ m = InfiniteModel(Ipopt.Optimizer);
 @constraint(m, -sum(A,dims=2).*data.p_bar .+ data.p_bar .==  b ) # payments to other nodes add up to inside liabilities f
 @constraint(m, A' * data.p_bar .== data.assets .- c ) # payments from other nodes add up to inside assets d
 
-# Fixing variables
-@constraint(m, α .== α0)
-@constraint(m, β .== β0)
 
 # Constraints for A
 for i = 1:N
@@ -87,55 +100,31 @@ for i=1:N
     end
 end
 
-# Clearing Vector Constraints
-#@constraint(m, p == min(p_bar, max(zeros(N), (1+g0) .* transpose(A)*p + c - x .* c .- g0.*p_bar))) 
-@constraint(m, p .== (1+g0) .* transpose(A)*p + c - x .* c .- g0.*p_bar)
+# Fixing variables
+@constraint(m, α .== α0)
+@constraint(m, β .== β0)
+@constraint(m, b .== b0)
+@constraint(m, c .== c0)
+@constraint(m, A .== A0)
 
-# Distributional constraints
-#delta = Pr(x*c >= w)
-#@infinite_variable(m, y[i=1:N](x), Bin)
-#@constraint(m, w .- c .* x .<= y .* M)
-#for i = 1:N
-#    @constraint(m, expect(1 .- y[i], x[i]) == delta[i])
-#end
+# Define the objective
+@objective(m, Min, expect(sum(-p),x))
 
-# Setting up objective function
-@objective(m, Min, expect(sum(c.*x + p_bar - p),x)) # min/max E[(ci * xi + p_bar i - pi(x)))]
+# Define the constraints for 
+# p == min(p_bar, max(0, (1+g0).* A'*p + c - x.*c - g0*p_bar)
+@infinite_variable(m, ind[1:N](x), Bin)
+@infinite_variable(m, ind2[1:N](x), Bin)
+@constraint(m, p .<= p_bar)
+@constraint(m, p .<= (1+g0) .* A * p - x.*c .- g0.*p_bar)
+@constraint(m, p .>= p_bar - M .* ind)
+@constraint(m, p .>= (1+g0) .* A * p - x.*c .- g0.*p_bar - M .* (1 .- ind))
 
-# Training Model
-@time optimize!(m);
+@constraint(m, z1 .>= zeros(N))
+@constraint(m, z1 .>=  (1+g0) .* A * p - x.*c .- g0.*p_bar)
+@constraint(m, z1 .<= zeros(N) + M .* ind2)
+@constraint(m, z1 .<= (1+g0) .* A * p - x.*c .- g0.*p_bar + M .* (1 .- ind2))
 
-## Checking Solution 
-# variable values after training
-csol0 = JuMP.value.(c)
-bsol0 = JuMP.value.(b)
-Asol0 = JuMP.value.(A)
-αsol0 = JuMP.value.(α)
-βsol0 = JuMP.value.(β)
-psol0 = JuMP.value.(p)
-objective = objective_value(m)
-tol = 1e-5
-
-#tests 
-@testset "check solution" begin
-    @test norm( sum(Asol0,dims=2).* data.p_bar .- (data.p_bar .- bsol0)) < tol
-    @test norm( Asol0' * data.p_bar .- (data.assets .- csol0)) < tol
-    @test norm(diag(Asol0)) < tol
-    @test norm([Asol0[i,j]*Asol0[j,i] for i=1:N , j=1:N]) < tol
-    @test all(-tol .<=Asol0.<=1+tol)
-    @test all(-tol .<=bsol0.<=data.p_bar)
-    @test all(-tol .<=csol0.<=data.assets)   
-end
-
-# Displaying output in batch solution
-print("c solution = $csol0 \n")
-print("c initial = $c0 \n")
-print("b solution = $bsol0 \n")
-print("b initial = $b0 \n")
-print("A solution = $Asol0 \n")
-print("A initial = $A0 \n")
-print("α solution = $αsol0 \n")
-print("α initial = $α0 \n")
-print("β solution = $βsol0 \n")
-print("β initial = $β0 \n")
-print("Final value = $objective \n")
+# Solve the model and get the results
+optimize!(m)
+opt_objective = objective_value(m)
+opt_A = value.(A)
