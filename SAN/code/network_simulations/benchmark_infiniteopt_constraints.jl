@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import Pkg; Pkg.add("Cbc")
 import Pkg; Pkg.add("Juniper")
 import Pkg; Pkg.add("JuMP")
@@ -11,6 +12,13 @@ import Pkg; Pkg.add("Random")
 using InfiniteOpt, JuMP, Distributions, LinearAlgebra, Random
 using XLSX, DataFrames
 using Juniper, Ipopt, Cbc, SCIP
+=======
+using Pkg
+Pkg.add(Pkg.PackageSpec(;name="InfiniteOpt", version="0.3.2"))
+
+using LinearAlgebra, DataFrames, XLSX, JuMP, Ipopt, Distributions, Random
+using InfiniteOpt, Test
+>>>>>>> 2da020a0ce9681b9e0a3ea4aa56993fa5442b29b
 
 N = 5 # keep largest `N' nodes by assets
 
@@ -43,11 +51,18 @@ M = 1000 #large M
 
 # initial guess
 rng =  Random.seed!(123)
-A0 = zeros(N,N)
-c0 =  data_nm.c 
-b0 = data_nm.b
+A0 = [0.0 0.14133583887525153 0.1511039608653196 0.07168597756012116 0.0; 4.397790928630315e-46 3.784129362573653e-46 0.0011130349115881636 0.0021575868856038793 0.0; 0.0 2.6904824890119278e-46 0.0 0.0017754459190904477 0.0003409123555305989; 0.0 8.151907446024649e-47 4.0774174184842646e-46 1.3738471521896145e-46 0.0008006562534392179; 0.7006089517923049 0.26066963219151196 1.0717105137003107e-47 0.0 0.0] #zeros(N,N)
+c0 = [1.451636125, 1.38565475, 1.516806125, 1.158976375, 1.0802461084138253] # data_nm.c 
+b0 = [1.2761951138379517, 1.7885790392572722, 1.6398795667567143, 1.206356349290129, 0.03998191427175805] #data_nm.b
 #α0 = 1.0*ones(N)
 #β0= 50.0*ones(N) 
+<<<<<<< HEAD
+=======
+α0 = [1.9769572880132678, 2.0324125912165893, 1.993261337452703, 1.8770622779385235, 1.6069831835194497] 
+β0 = [52.560963982981754, 40.34375025060936, 47.90276086264312, 78.19354871489458, 104.1726922224828] 
+α0 = α0[1:N]
+β0 = β0[1:N]
+>>>>>>> 2da020a0ce9681b9e0a3ea4aa56993fa5442b29b
 
 ## Plugging in answers from benchmark_comp
 α0 = [1.9769572880132678, 2.03241259121659, 1.9932613374527037, 1.87706227793852, 1.6069831835195945] 
@@ -80,6 +95,14 @@ m = InfiniteModel(SCIP.Optimizer)
 @constraint(m, -sum(A,dims=2).*data.p_bar .+ data.p_bar .==  b ) # payments to other nodes add up to inside liabilities f
 @constraint(m, A' * data.p_bar .== data.assets .- c ) # payments from other nodes add up to inside assets d
 
+<<<<<<< HEAD
+=======
+# Fixing variables
+@constraint(m, α .== α0)
+@constraint(m, β .== β0)
+@constraint(m, b .== b0)
+@constraint(m, c .== c0)
+>>>>>>> 2da020a0ce9681b9e0a3ea4aa56993fa5442b29b
 
 # Constraints for A
 for i = 1:N
