@@ -22,7 +22,7 @@ using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Test, Dist
 using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Profile, Distributed, CSV
 using JLD2, BenchmarkTools
-plotly(ticks=:native)  
+
 
 print("Finished setting up packages")
 
@@ -79,7 +79,6 @@ for i=1:N
 end
 
 dist_pdf(x,p) = exp(DistributionsAD.logpdf(DistributionsAD.Beta(p[1],p[2]),x[1]))
-Plots.plot([x->dist_pdf(x,[α0[i],β0[i]]) for i=1:N],0,1)
 
 function dist_cdf(p...)
     α,β,wc = p[1], p[2], p[3]
@@ -106,8 +105,11 @@ function dist_pdf_mv(x,params)
     loss_x(x)*joint_pdf
 end
 
+free_mem = []
+
 function ev(params...)
     prob = QuadratureProblem(dist_pdf_mv,zeros(N),ones(N),[params...])
+    global free_mem = [free_mem; Sys.free_memory()/1000/2^20]
     Quadrature.solve(prob,CubaCuhre(),reltol=1e-5,abstol=1e-5)[1]
 end
 
@@ -160,14 +162,19 @@ vars = [α...,β...,A...,b...,c...]
 unset_silent(m)
 
 time_start = time()
-try
-    mem_usage = @profile @benchmark JuMP.optimize!(m)
-catch
-end
+
+# running optimization
+mem_usage = @profile @benchmark JuMP.optimize!(m)
+
 
 time_end = time()
-total_mem = mem_usage.memory/1000/2^20
+try
+    total_mem = mem_usage.memory/1000/2^20
+catch
+    total_mem = NaN
+end
 total_time = time_end - time_start
+max_mem = max(free_mem...) - min(free_mem...)
 
 st0 = termination_status(m)
 obj0 = objective_value(m)
