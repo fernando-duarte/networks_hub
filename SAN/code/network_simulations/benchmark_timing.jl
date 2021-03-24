@@ -27,6 +27,7 @@ using JLD2, BenchmarkTools
 print("Finished setting up packages")
 
 # number of nodes
+profile = 0 # indicator if you want to profile the function  (1 if so)
 N =2 
 # N = prase(Int64, ARGS[1]) - if called via bash 
 ## load data
@@ -164,9 +165,13 @@ unset_silent(m)
 time_start = time()
 
 # running optimization
-mem_usage = @profile @benchmark JuMP.optimize!(m)
+if profile == 1
+    mem_usage = @profile @benchmark JuMP.optimize!(m)
+else 
+    mem_usage = JuMP.optimize!(m)
+end
 
-
+## recording meta_data
 time_end = time()
 try
     total_mem = mem_usage.memory/1000/2^20
@@ -211,6 +216,8 @@ CSV.write("data_out_$N.csv",  data_out)
 @save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0
 
 # Saving profile output
-open("profile_$N.txt", "w") do s
-    Profile.print(IOContext(s, :displaysize => (24, 500)))
+if profile == 1
+    open("profile_$N.txt", "w") do s
+        Profile.print(IOContext(s, :displaysize => (24, 500)))
+    end
 end
