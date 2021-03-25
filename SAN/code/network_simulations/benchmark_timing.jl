@@ -1,4 +1,6 @@
-# import Pkg
+#== RUN FIRST TIME ONLY ===
+
+#import Pkg
 using Pkg
 Pkg.add("Quadrature")
 Pkg.add("DataFrames")
@@ -17,12 +19,13 @@ Pkg.add("HCubature")
 Pkg.add("JLD2")
 Pkg.add("CSV")
 
+=====================#
+
 using Quadrature
 using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
 using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Profile, Distributed, CSV
 using JLD2, BenchmarkTools
-
 
 print("Finished setting up packages")
 
@@ -162,38 +165,53 @@ vars = [α...,β...,A...,b...,c...]
 
 unset_silent(m)
 
-# run once to compile
-JuMP.optimize!(m)
-
-# set realistic number of iterations
-set_optimizer_attribute(m, "max_iter",100)
-JuMP.optimize!(m)
-
-mem_usage = @benchmark JuMP.optimize!(m)
-
-Profile.clear()
-Profile.init(delay=0.001)
-set_optimizer_attribute(m, "max_iter",1)
-@profile JuMP.optimize!(m)
-
+set_optimizer_attribute(m , "max_iter", 1) # in case you want to change just before benchmarking
 time_start = time()
+
+#================= 
+@benchmark and @btime run JuMP.optimize!(m) 4 or more times
+@time and @elapsed run it once
+Compare screen output when running:
+```
+@benchmark JuMP.optimize!(m) 
+@btime JuMP.optimize!(m) 
+@time JuMP.optimize!(m) 
+@elapsed JuMP.optimize!(m) 
+```
+================#
+
+#== CONSIDER ALSO ========
+import Pkg
+Pkg.add("TimerOutputs")
+using TimerOutputs
+
+const to = TimerOutput() # creates timer 
+# time JuMP.optimize!(m) with the label "JuMP optimize" and save it to the `TimerOutput` named "to"
+@timeit to "JuMP optimize" JuMP.optimize!(m) 
+# display nice table
+show(to)
+
+# can do a lot more with TimerOutputs
+# nice blog: https://opensourc.es/blog/benchmarking-and-profiling-julia-code/
+# the readme: https://github.com/KristofferC/TimerOutputs.jl
+======================#
 
 # running optimization
 if profile == 1
-    mem_usage = @profile @benchmark JuMP.optimize!(m)
+    Profile.clear() # unnecessary for single batch runs?
+    Profile.init(delay=0.1) # delay per snapshot in secods, default is 0.001 -- increase for faster and coarser profiling
+    mem_usage = @profile @allocated JuMP.optimize!(m) 
+    time_usage = @profile @elapsed JuMP.optimize!(m)
 else 
-    @benchmark JuMP.optimize!(m)
-    mem_usage =
+    mem_usage = @allocated JuMP.optimize!(m) 
+    time_usage = @elapsed JuMP.optimize!(m)  
 end
 
 ## recording meta_data
 time_end = time()
-try
-    total_mem = mem_usage.memory/1000/2^20
-catch
-    total_mem = NaN
-end
-total_time = time_end - time_start
+total_mem = mem_usage/1000/2^20
+total_time = time_end - time_start # ≈time_usage?
+
 max_mem = max(free_mem...) - min(free_mem...)
 
 st0 = termination_status(m)
@@ -228,7 +246,7 @@ data_out.objective = objective * ones(N)
 CSV.write("data_out_$N.csv",  data_out)
 
 # Saving Variables
-@save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0 assets g0 rng m
+@save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0 assets g0 rng
 
 # Saving profile output
 if profile == 1
