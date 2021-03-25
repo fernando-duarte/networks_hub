@@ -15,6 +15,8 @@ using Quadrature, DataFrames, CSV
 using LinearAlgebra, Random, Distributions, DistributionsAD
 using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Distributed
+using Test
+using DistributionsAD: TuringDirichlet
 
 # Setting seed
 Random.seed!(123)
@@ -33,6 +35,62 @@ batch_val = 0
 parallel_val = 0
 time_start = time()
 mem_start = Sys.free_memory()/1000/2^20
+
+# is this broken? 
+rand(DistributionsAD.TuringDirichlet(N, 1.0),5) 
+@testset "TuringDirichlet" begin
+        dim = 3
+        n = 4
+        for alpha in (2, rand())
+            d1 = TuringDirichlet(dim, alpha)
+            d2 = Dirichlet(dim, alpha)
+            #d3 = TuringDirichlet(d2)
+            @test d1.alpha == d2.alpha # == d3.alpha
+            @test d1.alpha0 == d2.alpha0 # == d3.alpha0
+            @test d1.lmnB == d2.lmnB # == d3.lmnB
+
+            s1 = rand(d1)
+            @test s1 isa Vector{Float64}
+            @test length(s1) == dim
+
+            s2 = rand(d1, n)
+            @test s2 isa Matrix{Float64}
+            @test size(s2) == (dim, n)
+        end
+
+        for alpha in (ones(Int, dim), rand(dim))
+            d1 = TuringDirichlet(alpha)
+            d2 = Dirichlet(alpha)
+            #d3 = TuringDirichlet(d2)
+            @test d1.alpha == d2.alpha # == d3.alpha
+            @test d1.alpha0 == d2.alpha0 # == d3.alpha0
+            @test d1.lmnB == d2.lmnB # == d3.lmnB
+
+            s1 = rand(d1)
+            @test s1 isa Vector{Float64}
+            @test length(s1) == dim
+
+            s2 = rand(d1, n)
+            @test s2 isa Matrix{Float64}
+            @test size(s2) == (dim, n)
+        end
+end
+DistributionsAD.logpdf(TuringDirichlet([1.2,3.4,5.1]),[0.1,0.2,0.5])
+
+Zygote.gradient( (alpha1,alpha2,alpha3) -> exp(DistributionsAD.logpdf(TuringDirichlet([alpha1,alpha2,alpha3]),[0.1,0.2,0.5])) , (1.2,1.3,1.5)...)
+
+zg(a1,a2,x1,x2) = Zygote.gradient( (alpha1,alpha2)-> exp(DistributionsAD.logpdf(TuringDirichlet([alpha1,alpha2]),[x1,x2])) , (a1,a2)...)
+zg(1.3,1.5,0.45,0.12)
+
+using SpecialFunctions
+pdfDirichlet(a1,a2,x1,x2) = exp(DistributionsAD.logpdf(TuringDirichlet([a1,a2]),[x1,x2]))
+mg(a1,a2,x1,x2)=pdfDirichlet(a1,a2,x1,x2)*(digamma(a1+a2)-digamma(a1)+log(x1))
+zg(1.3,1.5,0.45,0.12)
+mg(1.3,1.5,0.45,0.12)
+
+for alpha in (ones(Int, 3), rand(3))
+    display(alpha)
+end
 
 ## Dirichlet distribution
 dist_pdf(x,p) = exp(DistributionsAD.logpdf(DistributionsAD.TuringDirichlet(N,p[1]),x[1]))
