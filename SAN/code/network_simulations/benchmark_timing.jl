@@ -53,10 +53,10 @@ names(data) # column names
 describe(data)
 show(data, allcols = true)
 
-p_bar = data.p_bar
-assets = data.assets
-delta = data.delta
-w= data.w
+p_bar = convert(Array{Float64},data.p_bar)
+assets = convert(Array{Float64},data.assets)
+delta = convert(Array{Float64},data.delta)
+w=convert(Array{Float64},data.w)
 g0 = 0.05   # bankruptcy cost
 
 # initial guess
@@ -102,7 +102,7 @@ function dist_pdf_mv(x,params)
         min.(p_bar, max.((1 .+g0).*(A'*p .+ c .- x.*c) .- g0.*p_bar,0))
     end
     contraction_iter(x, n::Integer) = n <= 0 ? p_bar  : contraction(x,contraction_iter(x,n-1))
-    loss_x(x) = -sum(contraction_iter(x,10)).*dist_pdf(x,[α...,β...])   
+    loss_x(x) = -sum(contraction_iter(x,2)).*dist_pdf(x,[α...,β...])   
     loss_x(x)*joint_pdf
 end
 
@@ -114,22 +114,22 @@ function ev(params...)
     Quadrature.solve(prob,CubaCuhre(),reltol=1e-5,abstol=1e-5)[1]
 end
 
-ic = [α0...,β0...,A0...,b0...,c0...]
-dist_pdf_mv(ones(N)/10.0,ic)
-ev(ic...)
+#ic = [α0...,β0...,A0...,b0...,c0...]
+#dist_pdf_mv(ones(N)/10.0,ic)
+#ev(ic...)
 
 # set up optimization
-m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>25,"print_level"=>5))
+m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>1,"print_level"=>5))
 
 @variable(m, 0.8<=α[i=1:N]<=3.0, start = α0[i]) 
 @variable(m, 1.0<=β[i=1:N]<=150.0, start = β0[i]) 
-#@variable(m, 0<=p[i=1:N,j=1:D]<=data.p_bar[i], start = data.p_bar[i]) 
+#@variable(m, 0<=p[i=1:N,j=1:D]<=p_bar[i], start = p_bar[i]) 
 @variable(m, 0<=A[i=1:N, j=1:N]<=1, start=A0[i,j])  
-@variable(m, w[i]<=c[i=1:N]<=data.assets[i], start = c0[i])  
-@variable(m, 0<=b[i=1:N]<=data.p_bar[i], start = b0[i])   
+@variable(m, w[i]<=c[i=1:N]<=assets[i], start = c0[i])  
+@variable(m, 0<=b[i=1:N]<=p_bar[i], start = b0[i])   
 
-@constraint(m, -sum(A,dims=2).*data.p_bar .+ data.p_bar .==  b ) # payments to other nodes add up to inside liabilities f
-@constraint(m, A' * data.p_bar .== data.assets .- c ) # payments from other nodes add up to inside assets d
+@constraint(m, -sum(A,dims=2).*p_bar .+ p_bar .==  b ) # payments to other nodes add up to inside liabilities f
+@constraint(m, A' * p_bar .== assets .- c ) # payments from other nodes add up to inside assets d
 # liabilities are net liabilities: A[i,i]=0 and A[i,j]A[j,i]=0
 @constraint(m, [i = 1:N], A[i,i]==0)
 for i=1:N
@@ -140,7 +140,7 @@ for i=1:N
     end
 end
 
-    # register max and min non-linear functions
+# register max and min non-linear functions
 maxfun(n1, n2) = max(n1, n2)
 minfun(n1, n2) = min(n1, n2)
 JuMP.register(m, :maxfun, 2, maxfun, autodiff=true)
@@ -162,13 +162,28 @@ vars = [α...,β...,A...,b...,c...]
 
 unset_silent(m)
 
+# run once to compile
+JuMP.optimize!(m)
+
+# set realistic number of iterations
+set_optimizer_attribute(m, "max_iter",100)
+JuMP.optimize!(m)
+
+mem_usage = @benchmark JuMP.optimize!(m)
+
+Profile.clear()
+Profile.init(delay=0.001)
+set_optimizer_attribute(m, "max_iter",1)
+@profile JuMP.optimize!(m)
+
 time_start = time()
 
 # running optimization
 if profile == 1
     mem_usage = @profile @benchmark JuMP.optimize!(m)
 else 
-    mem_usage = JuMP.optimize!(m)
+    @benchmark JuMP.optimize!(m)
+    mem_usage =
 end
 
 ## recording meta_data
@@ -213,7 +228,7 @@ data_out.objective = objective * ones(N)
 CSV.write("data_out_$N.csv",  data_out)
 
 # Saving Variables
-@save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0
+@save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0 assets g0 rng m
 
 # Saving profile output
 if profile == 1
@@ -221,3 +236,4 @@ if profile == 1
         Profile.print(IOContext(s, :displaysize => (24, 500)))
     end
 end
+
