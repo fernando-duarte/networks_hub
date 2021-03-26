@@ -1,4 +1,6 @@
-# import Pkg
+#== RUN FIRST TIME ONLY ===
+
+#import Pkg
 using Pkg
 Pkg.add("Quadrature")
 Pkg.add("DataFrames")
@@ -17,12 +19,13 @@ Pkg.add("HCubature")
 Pkg.add("JLD2")
 Pkg.add("CSV")
 
+=====================#
+
 using Quadrature
 using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
 using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Profile, Distributed, CSV
 using JLD2, BenchmarkTools
-
 
 print("Finished setting up packages")
 
@@ -53,10 +56,10 @@ names(data) # column names
 describe(data)
 show(data, allcols = true)
 
-p_bar = data.p_bar
-assets = data.assets
-delta = data.delta
-w= data.w
+p_bar = convert(Array{Float64},data.p_bar)
+assets = convert(Array{Float64},data.assets)
+delta = convert(Array{Float64},data.delta)
+w=convert(Array{Float64},data.w)
 g0 = 0.05   # bankruptcy cost
 
 # initial guess
@@ -102,7 +105,7 @@ function dist_pdf_mv(x,params)
         min.(p_bar, max.((1 .+g0).*(A'*p .+ c .- x.*c) .- g0.*p_bar,0))
     end
     contraction_iter(x, n::Integer) = n <= 0 ? p_bar  : contraction(x,contraction_iter(x,n-1))
-    loss_x(x) = -sum(contraction_iter(x,10)).*dist_pdf(x,[α...,β...])   
+    loss_x(x) = -sum(contraction_iter(x,2)).*dist_pdf(x,[α...,β...])   
     loss_x(x)*joint_pdf
 end
 
@@ -114,22 +117,22 @@ function ev(params...)
     Quadrature.solve(prob,CubaCuhre(),reltol=1e-5,abstol=1e-5)[1]
 end
 
-ic = [α0...,β0...,A0...,b0...,c0...]
-dist_pdf_mv(ones(N)/10.0,ic)
-ev(ic...)
+#ic = [α0...,β0...,A0...,b0...,c0...]
+#dist_pdf_mv(ones(N)/10.0,ic)
+#ev(ic...)
 
 # set up optimization
-m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>25,"print_level"=>5))
+m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>1,"print_level"=>5))
 
 @variable(m, 0.8<=α[i=1:N]<=3.0, start = α0[i]) 
 @variable(m, 1.0<=β[i=1:N]<=150.0, start = β0[i]) 
-#@variable(m, 0<=p[i=1:N,j=1:D]<=data.p_bar[i], start = data.p_bar[i]) 
+#@variable(m, 0<=p[i=1:N,j=1:D]<=p_bar[i], start = p_bar[i]) 
 @variable(m, 0<=A[i=1:N, j=1:N]<=1, start=A0[i,j])  
-@variable(m, w[i]<=c[i=1:N]<=data.assets[i], start = c0[i])  
-@variable(m, 0<=b[i=1:N]<=data.p_bar[i], start = b0[i])   
+@variable(m, w[i]<=c[i=1:N]<=assets[i], start = c0[i])  
+@variable(m, 0<=b[i=1:N]<=p_bar[i], start = b0[i])   
 
-@constraint(m, -sum(A,dims=2).*data.p_bar .+ data.p_bar .==  b ) # payments to other nodes add up to inside liabilities f
-@constraint(m, A' * data.p_bar .== data.assets .- c ) # payments from other nodes add up to inside assets d
+@constraint(m, -sum(A,dims=2).*p_bar .+ p_bar .==  b ) # payments to other nodes add up to inside liabilities f
+@constraint(m, A' * p_bar .== assets .- c ) # payments from other nodes add up to inside assets d
 # liabilities are net liabilities: A[i,i]=0 and A[i,j]A[j,i]=0
 @constraint(m, [i = 1:N], A[i,i]==0)
 for i=1:N
@@ -140,7 +143,7 @@ for i=1:N
     end
 end
 
-    # register max and min non-linear functions
+# register max and min non-linear functions
 maxfun(n1, n2) = max(n1, n2)
 minfun(n1, n2) = min(n1, n2)
 JuMP.register(m, :maxfun, 2, maxfun, autodiff=true)
@@ -162,23 +165,53 @@ vars = [α...,β...,A...,b...,c...]
 
 unset_silent(m)
 
+set_optimizer_attribute(m , "max_iter", 1) # in case you want to change just before benchmarking
 time_start = time()
+
+#================= 
+@benchmark and @btime run JuMP.optimize!(m) 4 or more times
+@time and @elapsed run it once
+Compare screen output when running:
+```
+@benchmark JuMP.optimize!(m) 
+@btime JuMP.optimize!(m) 
+@time JuMP.optimize!(m) 
+@elapsed JuMP.optimize!(m) 
+```
+================#
+
+#== CONSIDER ALSO ========
+import Pkg
+Pkg.add("TimerOutputs")
+using TimerOutputs
+
+const to = TimerOutput() # creates timer 
+# time JuMP.optimize!(m) with the label "JuMP optimize" and save it to the `TimerOutput` named "to"
+@timeit to "JuMP optimize" JuMP.optimize!(m) 
+# display nice table
+show(to)
+
+# can do a lot more with TimerOutputs
+# nice blog: https://opensourc.es/blog/benchmarking-and-profiling-julia-code/
+# the readme: https://github.com/KristofferC/TimerOutputs.jl
+======================#
 
 # running optimization
 if profile == 1
-    mem_usage = @profile @benchmark JuMP.optimize!(m)
+    Profile.clear() # unnecessary for single batch runs?
+    Profile.init(delay=0.1) # delay per snapshot in secods, default is 0.001 -- increase for faster and coarser profiling
+    mem_usage = @profile @allocated JuMP.optimize!(m) 
+    time_usage = @profile @elapsed JuMP.optimize!(m)
 else 
-    mem_usage = JuMP.optimize!(m)
+    mem_usage = @allocated JuMP.optimize!(m) 
+    time_usage = @elapsed JuMP.optimize!(m)  
 end
 
 ## recording meta_data
 time_end = time()
-try
-    total_mem = mem_usage.memory/1000/2^20
-catch
-    total_mem = NaN
-end
-total_time = time_end - time_start
+total_mem = mem_usage/1000/2^20
+total_time = time_end - time_start # ≈time_usage?
+
 max_mem = max(free_mem...) - min(free_mem...)
 
 st0 = termination_status(m)
@@ -213,7 +246,7 @@ data_out.objective = objective * ones(N)
 CSV.write("data_out_$N.csv",  data_out)
 
 # Saving Variables
-@save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0
+@save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0 assets g0 rng
 
 # Saving profile output
 if profile == 1
@@ -221,3 +254,4 @@ if profile == 1
         Profile.print(IOContext(s, :displaysize => (24, 500)))
     end
 end
+
