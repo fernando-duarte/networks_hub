@@ -1,7 +1,8 @@
-#== RUN FIRST TIME ONLY ===
-
-#import Pkg
+# RUN FIRST TIME ONLY
+#=
 using Pkg
+#Pkg.generate("benchmark_timing") # - run first time
+Pkg.activate("benchmark_timing")
 Pkg.add("Quadrature")
 Pkg.add("DataFrames")
 Pkg.add("XLSX")
@@ -18,21 +19,26 @@ Pkg.add("Cubature")
 Pkg.add("HCubature")
 Pkg.add("JLD2")
 Pkg.add("CSV")
+=#
+#
 
-=====================#
-
+# Subsequent runs
+using Pkg
+Pkg.activate("benchmark_timing")
 using Quadrature
 using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
 using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
 using Profile, Distributed, CSV
 using JLD2, BenchmarkTools
 
-print("Finished setting up packages")
+display("Finished setting up packages")
 
-# number of nodes
+# User Inputs
 profile = 0 # indicator if you want to profile the function  (1 if so)
-N =2 
-# N = prase(Int64, ARGS[1]) - if called via bash 
+max_iters = 25 #maximum number of iterations when optimizing
+#N = parse(Int64, ARGS[1]) # number of nodesif called via bash 
+N = 2
+
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
 data = vcat( [(XLSX.eachtablerow(xf[s]) |> DataFrames.DataFrame) for s in XLSX.sheetnames(xf)]... ) #for s in XLSX.sheetnames(xf) if (s!="Aggregates Composition" && s!="Dealer Aggregates" && s!="Approx Aggregates")
@@ -117,12 +123,8 @@ function ev(params...)
     Quadrature.solve(prob,CubaCuhre(),reltol=1e-5,abstol=1e-5)[1]
 end
 
-#ic = [α0...,β0...,A0...,b0...,c0...]
-#dist_pdf_mv(ones(N)/10.0,ic)
-#ev(ic...)
-
 # set up optimization
-m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>1,"print_level"=>5))
+m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>max_iters,"print_level"=>5))
 
 @variable(m, 0.8<=α[i=1:N]<=3.0, start = α0[i]) 
 @variable(m, 1.0<=β[i=1:N]<=150.0, start = β0[i]) 
@@ -165,7 +167,7 @@ vars = [α...,β...,A...,b...,c...]
 
 unset_silent(m)
 
-set_optimizer_attribute(m , "max_iter", 1) # in case you want to change just before benchmarking
+
 time_start = time()
 
 #================= 
@@ -173,10 +175,10 @@ time_start = time()
 @time and @elapsed run it once
 Compare screen output when running:
 ```
-@benchmark JuMP.optimize!(m) 
-@btime JuMP.optimize!(m) 
-@time JuMP.optimize!(m) 
-@elapsed JuMP.optimize!(m) 
+@benchmark JuMP.optimize!(m) # 1 iter=  10.358 seconds, 3.95 total gib #as many iters as desired = 353.666 s, 133.93 gib
+@btime JuMP.optimize!(m)  # 10.395 seconds, 3.95 total gib as many int as desired 347s, 133.93 gb
+@time JuMP.optimize!(m)  # 10.342 seconds, 3.952 gib, 350 seconds, 133.927 gib
+@elapsed JuMP.optimize!(m) # 10.38. 349.5 seconds
 ```
 ================#
 
@@ -184,13 +186,11 @@ Compare screen output when running:
 import Pkg
 Pkg.add("TimerOutputs")
 using TimerOutputs
-
 const to = TimerOutput() # creates timer 
 # time JuMP.optimize!(m) with the label "JuMP optimize" and save it to the `TimerOutput` named "to"
 @timeit to "JuMP optimize" JuMP.optimize!(m) 
 # display nice table
 show(to)
-
 # can do a lot more with TimerOutputs
 # nice blog: https://opensourc.es/blog/benchmarking-and-profiling-julia-code/
 # the readme: https://github.com/KristofferC/TimerOutputs.jl
@@ -200,7 +200,7 @@ show(to)
 if profile == 1
     Profile.clear() # unnecessary for single batch runs?
     Profile.init(delay=0.1) # delay per snapshot in secods, default is 0.001 -- increase for faster and coarser profiling
-    mem_usage = @profile @allocated JuMP.optimize!(m) 
+    mem_usage = @profile @allocated JuMP.optimize!(m)  
     time_usage = @profile @elapsed JuMP.optimize!(m)
 else 
     mem_usage = @allocated JuMP.optimize!(m) 
@@ -235,7 +235,7 @@ test_passed = (norm( sum(Asol0,dims=2).* data.p_bar .- (data.p_bar .- bsol0)) < 
 (all(0 .<=Asol0.<=1)) + (all(0 .<=bsol0.<=data.p_bar)) + (all(0 .<=csol0.<=data.assets)) +
 (norm(cdf_pkg-cdf_opt)<0.01) + (norm(delta-cdf_opt)<0.01)
 
-meta_data = DataFrame(nodes = N, total_time_sec = total_time, total_mem_gb = total_mem, error = st0, tests_passed = test_passed, total_tests = 9)
+meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, max_mem = max_mem, error = st0, tests_passed = test_passed, total_tests = 9)
 CSV.write("meta_data_$N.csv", meta_data)
 
 ## Exporting Results to csv
@@ -254,4 +254,3 @@ if profile == 1
         Profile.print(IOContext(s, :displaysize => (24, 500)))
     end
 end
-
