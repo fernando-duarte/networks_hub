@@ -1,43 +1,19 @@
-# RUN FIRST TIME ONLY
-#=
-using Pkg
-#Pkg.generate("benchmark_timing") # - run first time
+import Pkg
 Pkg.activate("benchmark_timing")
-Pkg.add("Quadrature")
-Pkg.add("DataFrames")
-Pkg.add("XLSX")
-Pkg.add("Missings")
-Pkg.add("JuMP")
-Pkg.add("Ipopt")
-Pkg.add("DistributionsAD")
-Pkg.add("SpecialFunctions")
-Pkg.add("ForwardDiff")
-Pkg.add("FiniteDiff")
-Pkg.add("Zygote")
-Pkg.add("Cuba")
-Pkg.add("Cubature")
-Pkg.add("HCubature")
-Pkg.add("JLD2")
-Pkg.add("CSV")
-=#
-#
-
-# Subsequent runs
-using Pkg
-Pkg.activate("benchmark_timing")
-using Quadrature
-using LinearAlgebra, DataFrames, XLSX, Missings, JuMP, Ipopt, Random, Test, Distributions, DistributionsAD, SpecialFunctions, NLsolve
-using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
-using Profile, Distributed, CSV
-using JLD2, BenchmarkTools
+Pkg.instantiate()
+using Test,BenchmarkTools,Profile
+using Random,SpecialFunctions,LinearAlgebra,ForwardDiff,FiniteDiff,Zygote,Distributions,DistributionsAD
+using JuMP,Ipopt,NLsolve
+using DataFrames,XLSX,Missings,JLD2,CSV
+using Quadrature,Cuba,Cubature,HCubature
 
 display("Finished setting up packages")
 
 # User Inputs
-profile = 0 # indicator if you want to profile the function  (1 if so)
+profile = 1 # indicator if you want to profile the function  (1 if so)
 max_iters = 25 #maximum number of iterations when optimizing
-#N = parse(Int64, ARGS[1]) # number of nodesif called via bash 
-N = 2
+N = parse(Int64, ARGS[1]) # number of nodesif called via bash 
+#N = 2
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -181,20 +157,6 @@ Compare screen output when running:
 @elapsed JuMP.optimize!(m) # 10.38. 349.5 seconds
 ```
 ================#
-
-#== CONSIDER ALSO ========
-import Pkg
-Pkg.add("TimerOutputs")
-using TimerOutputs
-const to = TimerOutput() # creates timer 
-# time JuMP.optimize!(m) with the label "JuMP optimize" and save it to the `TimerOutput` named "to"
-@timeit to "JuMP optimize" JuMP.optimize!(m) 
-# display nice table
-show(to)
-# can do a lot more with TimerOutputs
-# nice blog: https://opensourc.es/blog/benchmarking-and-profiling-julia-code/
-# the readme: https://github.com/KristofferC/TimerOutputs.jl
-======================#
 
 # running optimization
 if profile == 1
