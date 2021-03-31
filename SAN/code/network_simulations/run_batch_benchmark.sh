@@ -31,7 +31,7 @@ nohup time julia ~/"$1">output_"$3"_"$1".txt $3 # calling julia
 aws s3 cp /home/ec2-user/output_"$3"_"$1".txt "$2"output_"$3"_"$1".txt # copy file over
 aws s3 cp /home/ec2-user/data_out_"$3".csv "$2"data_out_"$3".csv
 aws s3 cp /home/ec2-user/variables_"$3".jld2 "$2"variables_"$3".jld2
-aws s3 cp /home/ec2-user/profile_"$3".txt "$2"profile_"$3".txt
+aws s3 cp /home/ec2-user/profile_"$3".txt "$2"profile_"$3".txt #might copy old file if benchmark isn't run with profile
 aws s3 cp /home/ec2-user/meta_data_"$3".csv "$2"meta_data_"$3".csv 
 
 ENDSSH
