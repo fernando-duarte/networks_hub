@@ -1,16 +1,6 @@
 using Pkg
-Pkg.add("Quadrature")
-Pkg.add("DistributionsAD")
-Pkg.add("SpecialFunctions")
-Pkg.add("ForwardDiff")
-Pkg.add("FiniteDiff")
-Pkg.add("Zygote")
-Pkg.add("Cuba")
-Pkg.add("Cubature")
-Pkg.add("HCubature")
-Pkg.add("CSV")
-Pkg.add("DataFrames")
-
+Pkg.activate("quadrature_timing")
+Pkg.instantiate
 using Quadrature, DataFrames, CSV
 using LinearAlgebra, Random, Distributions, DistributionsAD
 using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
