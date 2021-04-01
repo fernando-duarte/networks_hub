@@ -199,7 +199,7 @@ test_passed = (norm( sum(Asol0,dims=2).* data.p_bar .- (data.p_bar .- bsol0)) < 
 (all(0 .<=Asol0.<=1)) + (all(0 .<=bsol0.<=data.p_bar)) + (all(0 .<=csol0.<=data.assets)) +
 (norm(cdf_pkg-cdf_opt)<0.01) + (norm(delta-cdf_opt)<0.01)
 
-meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, max_mem = max_mem, optimization_output = st0, tests_passed = test_passed, total_tests = 9)
+meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, max_mem = max_mem, optimization_output = st0, tests_passed = test_passed, total_tests = 9, max_iters = max_iters)
 CSV.write("meta_data_$N.csv", meta_data)
 
 ## Exporting Results to csv
