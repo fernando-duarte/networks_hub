@@ -1,11 +1,13 @@
+# Found I have to do pkg.add() for the first run
 import Pkg
-Pkg.activate("benchmark_timing")
+Pkg.activate("joint_timing")
 Pkg.instantiate()
-using Test,BenchmarkTools,Profile
-using Random,SpecialFunctions,LinearAlgebra,ForwardDiff,FiniteDiff,Zygote,Distributions,DistributionsAD
-using JuMP,Ipopt,NLsolve
-using DataFrames,XLSX,Missings,JLD2,CSV
-using Quadrature,Cuba,Cubature,HCubature
+
+using Test, BenchmarkTools, Profile
+using Random, SpecialFunctions, LinearAlgebra, ForwardDiff, FiniteDiff, Zygote, Distributions, DistributionsAD
+using JuMP, Ipopt, NLsolve
+using DataFrames, XLSX, Missings, JLD2, CSV
+using Quadrature, Cuba, Cubature, HCubature
 
 display("Finished setting up packages")
 
@@ -197,7 +199,7 @@ test_passed = (norm( sum(Asol0,dims=2).* data.p_bar .- (data.p_bar .- bsol0)) < 
 (all(0 .<=Asol0.<=1)) + (all(0 .<=bsol0.<=data.p_bar)) + (all(0 .<=csol0.<=data.assets)) +
 (norm(cdf_pkg-cdf_opt)<0.01) + (norm(delta-cdf_opt)<0.01)
 
-meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, max_mem = max_mem, error = st0, tests_passed = test_passed, total_tests = 9)
+meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, max_mem = max_mem, optimization_output = st0, tests_passed = test_passed, total_tests = 9)
 CSV.write("meta_data_$N.csv", meta_data)
 
 ## Exporting Results to csv
@@ -214,5 +216,11 @@ CSV.write("data_out_$N.csv",  data_out)
 if profile == 1
     open("profile_$N.txt", "w") do s
         Profile.print(IOContext(s, :displaysize => (24, 500)))
+    end
+end
+
+if profile == 0
+    open("profile_$N.txt", "w") do io
+       println(io,"No Profiling Requested")
     end
 end
