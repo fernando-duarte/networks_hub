@@ -1,57 +1,47 @@
-using Pkg
-Pkg.activate("quadrature_timing")
-Pkg.instantiate
-using Quadrature, DataFrames, CSV
-using LinearAlgebra, Random, Distributions, DistributionsAD
-using ForwardDiff, FiniteDiff, Zygote, Cuba, Cubature, HCubature
-using Distributed
-using Test
-using DistributionsAD: TuringDirichlet
+import Pkg
+Pkg.activate("joint_timing")
+Pkg.instantiate()
+using Quadrature, Distributions, Random, DataFrames, CSV, Cuba, Cubature
 
 # Setting seed
 Random.seed!(123)
 
 ## Number of nodes
-N = 2
-# N = prase(Int64, ARGS[1]) - if called via bash 
+#N = 3
+N = parse(Int64, ARGS[1]) #- if called via bash 
 
 #User Inputs
 α0 = 10 .* (1 .- rand(N))
-β0 = 50 .* (1 .- rand(N))
-reltol_val = 1e-3
-abstol_val = 1e-3
-alg = HCubatureJL()
+reltol_val = 1e-5
+abstol_val = 1e-5
+alg = CubaCuhre()
 batch_val = 0
 parallel_val = 0
 time_start = time()
 mem_start = Sys.free_memory()/1000/2^20
 
-## Dirichlet distribution
-function dist_dirichlet_pdf_corrected(x,p)
-    if sum(x) - 1.00 < 1e6
-        exp(DistributionsAD.logpdf(DistributionsAD.TuringDirichlet(p),x)) 
-    else
-        0.0
-    end
-end
-
-# Mean
-dist_dirichlet_pdf(x,p) = exp(DistributionsAD.logpdf(DistributionsAD.TuringDirichlet(p),x)) 
-f(x,p) = dist_dirichlet_pdf(x,p) * sum(x)
-prob = QuadratureProblem(f,zeros(N),ones(N), α0)
-#prob = QuadratureProblem(f, zeros(N) , [1000.0, 1000.0], α0)
-sol_mean = Quadrature.solve(prob,alg,reltol=reltol_val,abstol=abstol_val)
-
 mean_dirichlet(p) = p./sum(p)
 
-mean_dirichlet(α0)
+# Mean
+final_mean = zeros(N)
+for i = 1:N
+    dist_dirichlet_pdf(x,p) = Distributions.pdf(Distributions.Dirichlet(p),x)
+    f_dirichlet(x,p) = dist_dirichlet_pdf([x;1.00-sum(x)],p) .* [x;1.00-sum(x)][i]
+    prob = QuadratureProblem(f_dirichlet,zeros(N-1),ones(N-1), α0,maxiters = 1e9)
+    sol_mean = Quadrature.solve(prob,alg,reltol=reltol_val,abstol=abstol_val)
+    global final_mean[i] = sol_mean[1]
+end 
 
 # Variance
-dist_dirichlet_pdf(x,p) = exp(DistributionsAD.logpdf(DistributionsAD.TuringDirichlet(p),x)) 
-f(x,p) = dist_dirichlet_pdf(x,p) * sum(((x .- mean_dirichlet(α0))).^2)
-prob = QuadratureProblem(f,zeros(N),ones(N), α0)
-#prob = QuadratureProblem(f, zeros(N) , [1000.0, 1000.0], α0)
-sol_var = Quadrature.solve(prob,alg,reltol=reltol_val,abstol=abstol_val)
+final_var = zeros(N)
+for i = 1:N
+    dist_dirichlet_pdf(x,p) = Distributions.pdf(Distributions.Dirichlet(p),x)
+    f(x,p) = dist_dirichlet_pdf([x;1.00-sum(x)],p) * ((([x;1.00-sum(x)] .- mean_dirichlet(α0))).^2)[i]
+    prob = QuadratureProblem(f,zeros(N-1),ones(N-1), α0)
+    sol_var = Quadrature.solve(prob,alg,reltol=reltol_val,abstol=abstol_val)
+    global final_var[i] = sol_var[1]
+end
+
 
 var_dirichlet(p) = ((p./sum(p)) .- (p./sum(p)).^2) ./(sum(p)+1)
 var_dirichlet(α0)
@@ -59,12 +49,20 @@ var_dirichlet(α0)
 covar_dirichlet(p, i, j) = -p[i]*p[j]/(sum(p)^3 + sum(p))   #only when i != j
 covar_dirichlet(α0,2,1)
 
-# Mean of Sqrt
-dist_dirichlet_pdf(x,p) = exp(DistributionsAD.logpdf(DistributionsAD.TuringDirichlet(p),x)) 
-f(x,p) = dist_dirichlet_pdf(x,p) * sum(sqrt.(x))^2
-prob = QuadratureProblem(f,zeros(N),ones(N), α0)
-#prob = QuadratureProblem(f, zeros(N) , [1000.0, 1000.0], α0)
-sol_sqrt = Quadrature.solve(prob,alg,reltol=reltol_val,abstol=abstol_val)
+test_passed = sum((abs.(final_mean .- mean_dirichlet(α0)) .< 1e-4) + (abs.(final_var .- var_dirichlet(α0)) .< 1e-4))
+
+## Saving Meta Data
+mem_end = Sys.free_memory()/1000/2^20
+total_mem = mem_start - mem_end 
+time_end = time()
+total_time = time_end-time_start
+meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, tests_passed = test_passed, total_tests = N*2)
+CSV.write("meta_data_$N.csv", meta_data)
+
+# Solving using cuba directly - works for N = 3 but not other values
+#divonne((z,f,ndim=N,nvec=N) -> f[] = Distributions.pdf(Distributions.Dirichlet(α0),[z;1.00-sum(z)]).*[z;1.00-sum(z)][1])
+
+
 
 #=
 # Matrix Beta
