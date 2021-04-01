@@ -5,6 +5,7 @@
 
 # folder to save results
 OUT_DIR="./quadrature_results/"
+
 mkdir -p $OUT_DIR
 
 # setting up access (only needed on first use)
@@ -25,6 +26,7 @@ cp /home/ec2-user/SageMaker/networks_hub/SAN/code/network_simulations/joint_timi
 cp /home/ec2-user/SageMaker/networks_hub/SAN/code/network_simulations/joint_timing/Manifest.toml /home/ec2-user/joint_timing/Manifest.toml
 cp /home/ec2-user/SageMaker/networks_hub/SAN/code/network_simulations/joint_timing/src/joint_timing.jl /home/ec2-user/joint_timing/src/joint_timing.jl
 
+
 # copy julia script to s3
 aws s3 cp "$1" "$2"
 
@@ -34,12 +36,15 @@ aws s3 cp "$2""$1" ~/"$1"
 # copy package environment
 mkdir -p quadrature_timing
 #aws s3 cp "$2"quadrature_timing quadrature_timing/ --recursive 
+
 #nohup time ~/julia-1.6.0/bin/julia  ~/"$1">output_"$1".txt
 #nohup time env JULIA_NUM_THREADS=4 julia ~/"$1">output_"$1".txt # 4 threads
 #nohup time ~/julia-1.6.0/bin/julia  -p 4 ~/"$1">output_"$1".txt  # 4 workers
 nohup time julia ~/"$1">output_"$3"_"$1".txt $3 # calling julia
+
 aws s3 cp /home/ec2-user/output_"$3"_"$1".txt "$2"quadrature_results/output_"$3"_"$1".txt
 aws s3 cp /home/ec2-user/meta_data_"$3".csv "$2"quadrature_results/meta_data_"$3".csv
+
 
 ENDSSH
 ENDSUDO
@@ -48,8 +53,11 @@ ENDSUDO
 aws s3 cp "$2"quadrature_results/output_"$3"_"$1".txt $OUT_DIR
 aws s3 cp "$2"quadrature_results/meta_data_"$3".csv $OUT_DIR
 
+
 # remove julia script and output files from s3
 # aws s3 rm "$2""$1"
 # aws s3 rm "$2"output_"$1".txt
+
 # aws s3 rm "$2"/* --recursive 
+
 

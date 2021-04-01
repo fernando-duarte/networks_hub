@@ -15,6 +15,7 @@ N = parse(Int64, ARGS[1]) #- if called via bash
 reltol_val = 1e-5
 abstol_val = 1e-5
 alg = CubaCuhre()
+
 batch_val = 0
 parallel_val = 0
 time_start = time()
@@ -42,7 +43,6 @@ for i = 1:N
     global final_var[i] = sol_var[1]
 end
 
-
 var_dirichlet(p) = ((p./sum(p)) .- (p./sum(p)).^2) ./(sum(p)+1)
 var_dirichlet(α0)
 
@@ -61,8 +61,6 @@ CSV.write("meta_data_$N.csv", meta_data)
 
 # Solving using cuba directly - works for N = 3 but not other values
 #divonne((z,f,ndim=N,nvec=N) -> f[] = Distributions.pdf(Distributions.Dirichlet(α0),[z;1.00-sum(z)]).*[z;1.00-sum(z)][1])
-
-
 
 #=
 # Matrix Beta
