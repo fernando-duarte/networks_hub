@@ -5,7 +5,6 @@ Pkg.instantiate()
 using Quadrature, Cuba, Cubature, Base.Threads
 using Distributions, Random
 using DataFrames, CSV
-using Flux, CUDA
 
 ## User Inputs
 N = 6
