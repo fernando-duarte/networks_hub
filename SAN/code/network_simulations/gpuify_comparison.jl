@@ -4,56 +4,55 @@ Pkg.instantiate()
 using Cuba, Distributions
 using BenchmarkTools, Test, CUDA
 using FLoops, FoldsCUDA
+using SpecialFunctions
 
 @test Threads.nthreads()>1
 
-M= 10 # number of independent beta random variables
+M= 25 # number of independent uniform random variables
 atol=1e-6
 rtol=1e-3
-nvec=10000000
+nvec=1000000
 maxevals=100000000
 
-# Naive GPU comparison
-function int(x, f)
-   f[1] = pdf(Product(Beta.(1.0,2.0*ones(M))),x)
+x = rand(M, nvec)
+x32 = convert(Matrix{Float32},x)
+cux = CuArray(x)
+cux32 = CuArray(x32)
+
+function beta_pdf(x, a, b)
+     prod((x.^(a-1.0) .* (ones(M) .- x).^(b-1.0))./(gamma(a)*gamma(b)/gamma(a+b)),dims = 1)
 end
 
-function int_gpu(x, f)
-   CUDA.@sync f[1] = pdf(Product(Beta.(1.0,(2.0*ones(M)))),CuArray(x)) 
+function beta_pdf_gpu(x, a, b)
+     prod(x.^(a-1.0) .* (CuArray(ones(M)) .- x).^(b-1.0)./(gamma(a)*gamma(b)/gamma(a+b)),dims=1)
 end
 
-# gpu appears slower
-display(@benchmark cuhre(int, M, 1, atol=atol, rtol=rtol))
-display(@benchmark cuhre(int_gpu, M, 1, atol=atol, rtol=rtol))
-display(@benchmark divonne(int, M, 1, atol=atol, rtol=rtol,maxevals=maxevals)[1])
-display(@benchmark divonne(int_gpu, M, 1, atol=atol, rtol=rtol,maxevals=maxevals)[1])
-
-# Now Comparing with  FLoops.jl
-function int_thread_col(x, f)
-     Threads.@threads for i in 1:size(x,2)
-      f[i] = pdf(Product(Beta.(1.0,2.0*ones(M))),@view(x[:,i]))
-    end
+function beta_pdf_gpu_ones(x, a, b)
+     prod(x.^(a-1.0) .* (ones_mat .- x).^(b-1.0)./(gamma(a)*gamma(b)/gamma(a+b)),dims=1)
 end
 
-function int_thread_col_floop(x, f)
-    @floop for i in 1:size(x,2)
-      f[i] = pdf(Product(Beta.(1.0,2.0*ones(M))),@view(x[:,i]))
-    end
+function beta_pdf_gpu_ones_32(x, a, b)
+     prod(x.^(a-1.0f0) .* (ones_mat .- x).^(b-1.0f0)./(gamma(a)*gamma(b)/gamma(a+b)),dims=1)
 end
 
-function int_thread_col_floop_cpu(x, f, ex = ThreadedEx())
-    @floop ex for i in 1:size(x,2)
-        f[i] = pdf(Product(Beta.(1.0,2.0*ones(M))),@view(x[:,i]))
-    end
+function beta_pdf_gpu_ones_32_sync(x, a, b)
+    CUDA.@sync prod(x.^(a-1.0f0) .* (ones_mat .- x).^(b-1.0f0)./(gamma(a)*gamma(b)/gamma(a+b)),dims=1)
 end
 
-function int_thread_col_floop_gpu(x, f, ex = has_cuda_gpu() ? CUDAEx() : ThreadedEx())
-    @floop for i in 1:size(x,2)
-        f[i] = pdf(Product(Beta.(1.0,2.0*ones(M))),CuArray(x[:,i]))
-    end
+function beta_pdf_gpu_ones_32_inbounds(x, a, b)
+   @inbounds prod(x.^(a-1.0f0) .* (ones_mat .- x).^(b-1.0f0)./(gamma(a)*gamma(b)/gamma(a+b)),dims=1)
 end
 
-display(@benchmark cuhre(int_thread_col, M, 1, atol=atol, rtol=rtol))
-display(@benchmark cuhre(int_thread_col_floop, M, 1, atol=atol, rtol=rtol)) #floop seems faster than Threads.@threads
-display(@benchmark cuhre(int_thread_col_floop_cpu, M, 1, atol=atol, rtol=rtol)) 
-display(@benchmark cuhre(int_thread_col_floop_gpu, M, 1, atol=atol, rtol=rtol)) #floop and gpu seem in between in terms of speed 
+
+# Benchmarking Different Options
+display(@benchmark pdf(Product(Beta.(1.0,2.0*ones(M))),$x)) # running using Beta function from Dsitributions (slowest)
+display(@benchmark beta_pdf($x, 1.0,2.0)) #running on cpu using user written Beta function
+display(@benchmark beta_pdf($x32, 1.0f0,2.0f0)) #running on cpu using user written Beta function with float 32 (no change)
+display(@benchmark beta_pdf_gpu($cux,1.0,2.0)) # running on gpu using user written beta function (faster than cpu)
+display(@benchmark beta_pdf_gpu_ones($cux,1.0,2.0)) # running on gpu, user written, preallocated ones (faster than without preallocation)
+
+ones_mat = CuArray(convert(Vector{Float32},ones(M)))
+display(@benchmark beta_pdf_gpu_ones_32($cux32,1.0f0,2.0f0)) # running on gpu using user written beta function with float 32 and preallocated ones as float32 (faster)
+display(@benchmark beta_pdf_gpu_ones_32_sync($cux32,1.0f0,2.0f0)) # running on gpu using user written beta function with float 32 and preallocated ones as float32 and sync (same as above) 
+display(@benchmark beta_pdf_gpu_ones_32_inbounds($cux32,1.0f0,2.0f0)) # running on gpu using user written beta function with float 32 and preallocated ones as float32 and inbounds (same as above) 
+
