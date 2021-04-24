@@ -49,10 +49,13 @@ display(@benchmark pdf(Product(Beta.(1.0,2.0*ones(M))),$x)) # running using Beta
 display(@benchmark beta_pdf($x, 1.0,2.0)) #running on cpu using user written Beta function
 display(@benchmark beta_pdf($x32, 1.0f0,2.0f0)) #running on cpu using user written Beta function with float 32 (no change)
 display(@benchmark beta_pdf_gpu($cux,1.0,2.0)) # running on gpu using user written beta function (faster than cpu)
+
+ones_mat = CuArray(ones(M))
 display(@benchmark beta_pdf_gpu_ones($cux,1.0,2.0)) # running on gpu, user written, preallocated ones (faster than without preallocation)
 
 ones_mat = CuArray(convert(Vector{Float32},ones(M)))
 display(@benchmark beta_pdf_gpu_ones_32($cux32,1.0f0,2.0f0)) # running on gpu using user written beta function with float 32 and preallocated ones as float32 (faster)
 display(@benchmark beta_pdf_gpu_ones_32_sync($cux32,1.0f0,2.0f0)) # running on gpu using user written beta function with float 32 and preallocated ones as float32 and sync (same as above) 
 display(@benchmark beta_pdf_gpu_ones_32_inbounds($cux32,1.0f0,2.0f0)) # running on gpu using user written beta function with float 32 and preallocated ones as float32 and inbounds (same as above) 
+
 
