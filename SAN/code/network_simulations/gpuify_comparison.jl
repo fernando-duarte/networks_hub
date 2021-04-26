@@ -19,6 +19,9 @@ x32 = convert(Matrix{Float32},x)
 cux = CuArray(x)
 cux32 = CuArray(x32)
 
+@benchmark reduce(*, cux32, dims = 1)
+@benchmark prod(cux32, dims=1) #identical to above 
+
 function beta_pdf(x, a, b)
      prod((x.^(a-1.0) .* (ones(M) .- x).^(b-1.0))./(gamma(a)*gamma(b)/gamma(a+b)),dims = 1)
 end
