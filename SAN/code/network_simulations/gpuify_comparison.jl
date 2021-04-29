@@ -85,7 +85,6 @@ display(@benchmark beta_pdf_gpu_precompile_flip($x',CuArray([1.0f0]),CuArray([2.
 f = ones(Float32, (1, size(x,2)))
 display(@benchmark beta_pdf_gpu_precompile_floop($x,CuArray([1.0f0]),CuArray([2.0f0]))) 
 display(@benchmark beta_pdf_gpu_precompile_floop2($x,CuArray([1.0f0]),CuArray([2.0f0]))) #much slower
-display(@benchmark beta_pdf_gpu_ones_32_array_lgamma($cux32,CuArray([1.0f0]),CuArray([2.0f0]))) # running on gpu using user written beta function with float 32 and preallocated ones as float32 and inbounds (same as above) 
 
 ## Trying out multiplication strategies  
 display(@benchmark reduce(*, x, dims = 1))
