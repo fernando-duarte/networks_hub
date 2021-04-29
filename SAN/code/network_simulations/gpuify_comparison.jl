@@ -55,13 +55,14 @@ function beta_pdf_gpu_precompile_floop(x, a, b) # super slow
     power2 = b-CuArray([1.0f0])
     denominator = exp.(CUDA.lgamma.(a)) .* exp.(CUDA.lgamma.(b)) ./ exp.(CUDA.lgamma.(a+b))
     for j in 1:size(x,2)
-        @floop for w in referenceable(x[:,j])
-            @reduce(xprod *= (w[]^(power1[1]) * (1.0f0 .- w[])^(power2[1]))/denominator)
+        @floop CUDAEx() for w in referenceable(x[:,j])
+            @reduce(xprod *= w[]^power1[1] * (1.0f0 - w[])^power2[1]/denominator[1])
         end
         f[j] = xprod
     end
     return f
 end
+
 
 
 function beta_pdf_gpu_precompile_floop2(x, a, b) # super slow
