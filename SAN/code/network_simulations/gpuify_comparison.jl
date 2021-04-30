@@ -10,10 +10,10 @@ using Referenceables: referenceable
 @test Threads.nthreads()>1
 
 # User Inputs
-M= 5 # number of independent uniform random variables
+M= 36 # number of independent uniform random variables
 atol=1e-6
 rtol=1e-3
-nvec=10000
+nvec=100000
 maxevals=100000000
 
 # Initializing Matrices
@@ -63,42 +63,39 @@ function beta_pdf_gpu_precompile_floop(x, a, b) # super slow
     return f
 end
 
-
-
-function beta_pdf_gpu_precompile_floop2(x, a, b) # super slow
+function beta_pdf_gpu_precompile_floop2(f, x, a, b) # super slow
     power1 = a-CuArray([1.0f0])
     power2 = b-CuArray([1.0f0])
-    denominator = exp.(CUDA.lgamma.(a)) .* exp.(CUDA.lgamma.(b)) ./ exp.(CUDA.lgamma.(a+b))
-    @floop CUDAEx() for j in 1:size(x,2)
-        xprod = prod((x[:,j].^(power1) .* (ones_mat .- x[:,j]).^(power2))./denominator,dims=1)
-        f[j] = xprod[1]
-    end
+    denominator = (exp.(CUDA.lgamma.(a)) .* exp.(CUDA.lgamma.(b)) ./ exp.(CUDA.lgamma.(a+b)))[1]
+    @floop CUDAEx() for i in 1:size(x,2)
+        f[i] = reduce(*,(x[:,i].^(power1) .* (ones_mat .- x[:,i]).^(power2))./denominator)
+        end
     return f
 end
 
-# Benchmarking Different Options
+# Benchmarking PDF Calculations
+display("Benchmarking PDF Calculations")
 display(@benchmark beta_pdf_gpu($x, 1.0f0, 2.0f0))
-display(@benchmark beta_pdf_gpu_array($x,1.0f0,2.0f0)) # running on gpu using user written beta function with float 32 and preallocated ones as float32 (faster)
+display(@benchmark beta_pdf_gpu_array($x,1.0f0,2.0f0)) 
 display(@benchmark beta_pdf_gpu_reduce($x,1.0f0,2.0f0)) # slower
 display(@benchmark beta_pdf_gpu_precompile($x,CuArray([1.0f0]),CuArray([2.0f0]))) #faster 
 display(@benchmark beta_pdf_gpu_precompile_flip($x',CuArray([1.0f0]),CuArray([2.0f0]))) #marginally slower 
 
 f = ones(Float32, (1, size(x,2)))
-display(@benchmark beta_pdf_gpu_precompile_floop($x,CuArray([1.0f0]),CuArray([2.0f0]))) 
-display(@benchmark beta_pdf_gpu_precompile_floop2($x,CuArray([1.0f0]),CuArray([2.0f0]))) #much slower
+display(@benchmark beta_pdf_gpu_precompile_floop($x,CuArray([1.0f0]),CuArray([2.0f0]))) #much slower
+#display(@benchmark beta_pdf_gpu_precompile_floop2($x,CuArray([1.0f0]),CuArray([2.0f0]))) # doesn't work yet
 
 ## Trying out multiplication strategies  
-display(@benchmark reduce(*, x, dims = 1))
-display(@benchmark prod(x, dims=1)) #identical to above 
-
-function parallel_multi(x)
-    for i in 1:size(x, 2)
-        @floop CUDAEx() for w in referenceable(x[:,i])
-         @reduce(val *= w[])
-        end
-        result[i] = val
+function parallel_multi(f, x)
+   @floop CUDAEx() for i in 1:size(x, 2)
+        val = reduce(*,@view(x[:,i]))
+        f[i] = val 
     end
-    return result 
+    return f
 end
+
 result = CUDA.ones(size(x,2),1)
-display(@benchmark parallel_multi(x)) #seems way slower
+display("Comparing Multiplication Methods")
+display(@benchmark parallel_multi(result, $x)) #is 2-5x faster
+display(@benchmark reduce(*, $x, dims = 1))
+display(@benchmark prod($x, dims=1)) #identical to above 
