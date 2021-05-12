@@ -38,10 +38,13 @@ display(@benchmark prod($x, dims=1)) #identical to above
 ### takeaway: want to use gpu for parallelization of multiplication 
 
 # Comparing Computing PDFs
-function beta_pdf_cpu(x,a,b)
+function beta_pdf_cpu_old(x,a,b)
     pdf(Product(Beta.(a,b*ones(M))),x)
 end
 
+function beta_pdf_cpu_new(x, a, b)
+     prod(x.^(a-1.0f0) .* (ones_mat_cpu .- x).^(b-1.0f0)./(gamma(a)*gamma(b)/gamma(a+b)),dims=1)
+end
 
 function beta_pdf_gpu(x, a, b)
      prod(x.^(a-1.0f0) .* (ones_mat .- x).^(b-1.0f0)./(gamma(a)*gamma(b)/gamma(a+b)),dims=1)
@@ -54,7 +57,28 @@ function beta_pdf_gpu_precompile(x, a, b)
     prod((x.^(power1) .* (ones_mat .- x).^(power2))./denominator,dims=1)
 end
 
-function beta_pdf_gpu_precompile_floop(f,x, a, b) # works with CUDAEx() but slightly slower cause of calculations outside of floop loop
+function beta_pdf_gpu_precompile_flip(x, a, b)
+    power1 = a-1.0f0
+    power2 = b-1.0f0
+    denominator = exp.(CUDA.lgamma.(a)) .* exp.(CUDA.lgamma.(b)) ./ exp.(CUDA.lgamma.(a+b))
+    ones_mat_flip = ones_mat'
+    prod((x.^(power1) .* (ones_mat_flip .- x).^(power2))./denominator,dims=2)
+end
+
+function beta_pdf_gpu_precompile_floop(f, x, a, b) # super slow
+    power1 = a-1.0f0
+    power2 = b-1.0f0
+    denominator = (exp.(CUDA.lgamma.(a)) .* exp.(CUDA.lgamma.(b)) ./ exp.(CUDA.lgamma.(a+b)))[1]
+    for j in 1:size(x,2)
+        @floop CUDAEx() for w in referenceable(x[:,j])
+            @reduce(xprod *= w[]^power1[1] * (1.0f0 - w[])^power2[1]/denominator)
+        end
+        f[j] = xprod
+    end
+    return f
+end
+
+function beta_pdf_gpu_precompile_floop2(f,x, a, b) # works with CUDAEx() but slightly slower cause of calculations outside of floop loop
     power1 = a-1.0f0
     power2 = b-1.0f0
     denominator = (exp.(CUDA.lgamma.(a)) .* exp.(CUDA.lgamma.(b)) ./ exp.(CUDA.lgamma.(a+b)))[1]
@@ -67,6 +91,18 @@ function beta_pdf_gpu_precompile_floop(f,x, a, b) # works with CUDAEx() but slig
     end
     return f
 end
+
+# Benchmarking PDF Calculations
+display("Benchmarking PDF Calculations")
+display(@benchmark beta_pdf_cpu_old($x_cpu, 1.0f0, 2.0f0)) #1.6 s M = 25, Nvec = 1000000
+display(@benchmark beta_pdf_cpu_new($x_cpu, 1.0f0, 2.0f0)) # 400 ms M = 25, Nvec = 1000000
+display(@benchmark beta_pdf_gpu($x, 1.0f0, 2.0f0)) # 33ms M = 25, Nvec = 1000000
+display(@benchmark beta_pdf_gpu_precompile($x,1.0f0,2.0f0)) # 28 ms, M = 25 Nvec = 1000000
+display(@benchmark beta_pdf_gpu_precompile_flip($x',1.0f0, 2.0f0)) # 28ms M = 25, Nvec = 1000000
+
+result = CUDA.ones(Float32, (size(x,2),1))
+display(@benchmark beta_pdf_gpu_precompile_floop(result, $x,1.0f0, 2.0f0)) # 180 seconds for M = 25, Nvec = 1000000
+display(@benchmark beta_pdf_gpu_precompile_floop2(result, $x, 1.0f0, 2.0f0)) # 90 ms for M = 25, Nvec  = 1000000
 
 # Benchmarking PDF Calculations
 display("Comparing PDF Calculations")
