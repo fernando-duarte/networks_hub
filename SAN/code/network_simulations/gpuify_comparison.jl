@@ -105,12 +105,4 @@ result = CUDA.ones(Float32, (size(x,2),1))
 display(@benchmark beta_pdf_gpu_precompile_floop(result, $x,1.0f0, 2.0f0)) # 180 seconds for M = 25, Nvec = 1000000
 display(@benchmark beta_pdf_gpu_precompile_floop2(result, $x, 1.0f0, 2.0f0)) # 90 ms for M = 25, Nvec  = 1000000
 
-# Benchmarking PDF Calculations
-display("Comparing PDF Calculations")
-display(@benchmark beta_pdf_cpu($x_cpu, 1.0f0, 2.0f0))
-display(@benchmark beta_pdf_gpu($x, 1.0f0, 2.0f0)) #10-15x faster than cpu
-display(@benchmark beta_pdf_gpu_precompile($x,1.0f0,2.0f0)) #same as above 
-result = CUDA.ones(Float32, (size(x,2),1))
-display(@benchmark beta_pdf_gpu_precompile_floop($result, $x,1.0f0, 2.0f0)) #a bit slower than aboveh slower
-
 ### Takeaway: Want to parallelize the pdf computation using floop with GPU, but have to figure out how to also do calculations with it to get gain from multiplication
