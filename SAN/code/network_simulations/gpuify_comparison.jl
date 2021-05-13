@@ -5,11 +5,12 @@ using Cuba, Distributions
 using BenchmarkTools, Test, CUDA
 using FLoops, FoldsCUDA
 using SpecialFunctions
+using Referenceables: referenceable
 
 @test Threads.nthreads()>1
 
 # User Inputs
-M= 10 # number of independent uniform random variables
+M= 25 # number of independent uniform random variables
 atol=1e-6
 rtol=1e-3
 nvec=1000000
@@ -105,4 +106,4 @@ result = CUDA.ones(Float32, (size(x,2),1))
 display(@benchmark beta_pdf_gpu_precompile_floop(result, $x,1.0f0, 2.0f0)) # 180 seconds for M = 25, Nvec = 1000000
 display(@benchmark beta_pdf_gpu_precompile_floop2(result, $x, 1.0f0, 2.0f0)) # 90 ms for M = 25, Nvec  = 1000000
 
-### Takeaway: Want to parallelize the pdf computation using floop with GPU, but have to figure out how to also do calculations with it to get gain from multiplication
+### Takeaway: Want to parallelize the pdf computation using floop with GPU, but have to figure out how to also do calculation
