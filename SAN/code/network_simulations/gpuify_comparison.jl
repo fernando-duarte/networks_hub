@@ -19,6 +19,7 @@ maxevals=100000000
 x = CuArray(rand(Float32, (M, nvec)))
 ones_mat = CuArray(ones(Float32, M))
 x_cpu = rand(Float32, (M, nvec))
+ones_mat_cpu = ones(Float32, M)
 
 # Comparing Multiplication Techniques
 function parallel_multi(f, x)
