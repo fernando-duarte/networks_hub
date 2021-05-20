@@ -1,19 +1,21 @@
+# Found I have to do pkg.add() for the first run
 import Pkg
-Pkg.activate("benchmark_timing")
+Pkg.activate("joint_timing")
 Pkg.instantiate()
-using Test,BenchmarkTools,Profile
-using Random,SpecialFunctions,LinearAlgebra,ForwardDiff,FiniteDiff,Zygote,Distributions,DistributionsAD
-using JuMP,Ipopt,NLsolve
-using DataFrames,XLSX,Missings,JLD2,CSV
-using Quadrature,Cuba,Cubature,HCubature
+
+using Test, BenchmarkTools, Profile
+using Random, SpecialFunctions, LinearAlgebra, ForwardDiff, FiniteDiff, Zygote, Distributions, DistributionsAD
+using JuMP, Ipopt, NLsolve
+using DataFrames, XLSX, Missings, JLD2, CSV
+using Quadrature, Cuba, Cubature, HCubature
 
 display("Finished setting up packages")
 
 # User Inputs
 profile = 1 # indicator if you want to profile the function  (1 if so)
-max_iters = 25 #maximum number of iterations when optimizing
-N = parse(Int64, ARGS[1]) # number of nodesif called via bash 
-#N = 2
+max_iters = 10000 #maximum number of iterations when optimizing
+#N = parse(Int64, ARGS[1]) # number of nodesif called via bash 
+N = 5
 
 ## load data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -96,7 +98,7 @@ free_mem = []
 function ev(params...)
     prob = QuadratureProblem(dist_pdf_mv,zeros(N),ones(N),[params...])
     global free_mem = [free_mem; Sys.free_memory()/1000/2^20]
-    Quadrature.solve(prob,CubaCuhre(),reltol=1e-5,abstol=1e-5)[1]
+    Quadrature.solve(prob,CubaSUAVE(),reltol=1e-5,abstol=1e-5)[1]
 end
 
 # set up optimization
@@ -197,15 +199,15 @@ test_passed = (norm( sum(Asol0,dims=2).* data.p_bar .- (data.p_bar .- bsol0)) < 
 (all(0 .<=Asol0.<=1)) + (all(0 .<=bsol0.<=data.p_bar)) + (all(0 .<=csol0.<=data.assets)) +
 (norm(cdf_pkg-cdf_opt)<0.01) + (norm(delta-cdf_opt)<0.01)
 
-meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, max_mem = max_mem, error = st0, tests_passed = test_passed, total_tests = 9)
-CSV.write("meta_data_$N.csv", meta_data)
+meta_data = DataFrame(nodes = N, total_time_min = total_time/60, total_mem_gb = total_mem, max_mem = max_mem, optimization_output = st0, tests_passed = test_passed, total_tests = 9, max_iters = max_iters)
+CSV.write("meta_data_$(N)_SUAVE.csv", meta_data)
 
 ## Exporting Results to csv
 data_out = DataFrame(node = 1:N, csol0 = csol0, bsol0 = bsol0, alphasol0 = αsol0, betasol0 = βsol0)
 data_asol0 = convert(DataFrame, Asol0)
 data_out = hcat(data_out, data_asol0)
 data_out.objective = objective * ones(N)
-CSV.write("data_out_$N.csv",  data_out)
+CSV.write("data_out_$(N)_SUAVE.csv",  data_out)
 
 # Saving Variables
 @save "variables_$N.jld2" A0 Asol0 N b0 bsol0 c0 csol0 delta p_bar w α0 αsol0 β0 βsol0 assets g0 rng
@@ -214,5 +216,11 @@ CSV.write("data_out_$N.csv",  data_out)
 if profile == 1
     open("profile_$N.txt", "w") do s
         Profile.print(IOContext(s, :displaysize => (24, 500)))
+    end
+end
+
+if profile == 0
+    open("profile_$N.txt", "w") do io
+       println(io,"No Profiling Requested")
     end
 end
