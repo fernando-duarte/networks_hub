@@ -119,4 +119,6 @@ global num_evals = 1 #resetting so it shows size(x)
 @btime cuhre($int_thread_el, $M, 1, atol=$atol, rtol=$rtol,nvec=$(10000000)) #size is 273 for M = 5
 global num_evals = 1 #resetting so it shows size(x)
 
-## Takeaway, Speed seems to increase from nvec = 16 to nvec = 100 to nvec = 1000 but is pretty stable above nvec since size is the same. 
+## Int_thread_el and Int_thread_col have same size(x) for given M and nvec
+## Takeaway speed increases with nvec for cuhre because the size of the x matrix grows from 16 to 30k for M = 15. 
+## Takeaway, Speed seems to increase from nvec = 16 to nvec = 100 to nvec = 1000 for Suave and Divonne, but after that remains constant as size of X maxes out at like 250. 
