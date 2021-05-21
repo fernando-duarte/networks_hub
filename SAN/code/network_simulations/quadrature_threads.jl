@@ -36,8 +36,8 @@ function int_thread_col_d(x,f)
         @show(size(x))
     end
     global num_evals += 1
-    x_d = convert(CuArray{Float32},x)
-    val = beta_pdf_d(x_d, 1.0f0, 2.0f0,1)
+    x = convert(CuArray{Float32},x)
+    val = beta_pdf_d(x, 1.0f0, 2.0f0,1)
     @floop for i in 1:size(x,2)
         f[i] = val[i]
     end
@@ -201,18 +201,16 @@ global num_evals = 1 #resetting so it shows size(x)
 
 ## Running for large M 
 
-M = 25
-# GPU
+M = 25 
+# Gpu 
 @suppress begin 
     global num_evals = 1
     display(@benchmark  cuhre($int_thread_col_d, $M, $1, atol=$atol, rtol=$rtol,nvec=$(1000000000))) 
 end
-# M = 5 15 ms; M = 10 130 ms; M = 15 1.9s; M = 20 19.2s; M = 25 530 s (on p2)
-# M = 5 11 ms; M = 10 100 ms; M = 15 1.5s; M = 20 14.8s; M = 25 400 s; (on p3)
+# M = 5, 15 ms; M = 10 130 ms; M = 15 1.9s; M = 20 19.2s; M = 25 530 seconds
 
 
 # Cpu
 global num_evals = 1
 display(@benchmark  cuhre($int_thread_col, $M, $1, atol=$atol, rtol=$rtol,nvec=$(1000000000))) 
-# For M = 5 1.5ms, M = 10 13ms,  M = 15 260 ms, M = 20 9s, M =25 470s (on p2)
-# For M = 5 1.5ms, M = 10 41ms,  M = 15 260 ms, M = 20 8s, M =25 390s(on p3)
+# For M = 5 1.5ms, M = 10 13ms,  M = 15 fastest option is 260 ms, for M = 20 takes 9s, for M =25 446 seconds (7.5 minutes)
