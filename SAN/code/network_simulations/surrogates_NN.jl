@@ -6,7 +6,7 @@ using XLSX, DataFrames, Random, Test, NLsolve, Distributions, BenchmarkTools, Li
 using Surrogates, Flux
 
 # User Input
-N = 5 # number of nodes
+N = 15 # number of nodes
 Q = 1  #number of beta draws
 
 # Loading Data
@@ -89,14 +89,14 @@ end
 
 x = x[:,1]
 n = 1000
-bounds = Float32[0.0, 0.0, 0.0, 0.0, 0.0], Float32[1.0, 1.0,1.0,1.0,1.0]
+bounds = zeros(N), ones(N)
 x_train = Surrogates.sample(n, bounds..., SobolSample())
-y_train = zeros(5,n)
+y_train = zeros(N,n)
 for i = 1:n
     y_train[:,i] = p_func(x_train[i],p_bar,A,c)
 end
 
-model = Chain(Dense(5, 20, relu), Dense(20,20,relu), Dense(20, 5))
+model = Chain(Dense(N, 20, relu), Dense(20,20,relu), Dense(20, N))
 loss(x, y) = Flux.mse(model(x), y)
 
 learning_rate = 0.1
