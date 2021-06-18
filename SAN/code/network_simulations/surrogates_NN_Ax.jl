@@ -8,10 +8,11 @@ using XLSX, DataFrames, Random, Test, NLsolve, Distributions, BenchmarkTools, Li
 using Surrogates, Flux
 using Flux.Data: DataLoader
 using IterTools: ncycle
+using Flux: throttle
 
 # User Inputs
-N = 10 #number of points
-Q = 1000 #number of samples
+N = 100 #number of points
+Q = 100 #number of samples
 
 # Loading Data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -75,22 +76,26 @@ for i = 1:N
     x[i,:] = rand(Beta(α0[i],β0[i]), Q)
 end
 
-# making concatination of many A matricies
-A_in = rand(N,N)./50
-for i = 1:N
-    A_in[i,i] = 0.0
-end
-A_in = vec(A_in)
-for i = 1:Q-1
-    A=rand(N,N)./50
+# making concatination of many A matricies for
+function gen_A(N,Q)
+    A_in = rand(N,N)./(50 .* rand(1))
     for i = 1:N
-        A[i,i] = 0.0
+        A_in[i,i] = 0.0
     end
-    A_in = hcat(A_in, vec(A))
+    A_in = vec(A_in)
+    for i = 1:Q-1
+        A=rand(N,N)./(50 .* rand(1))
+        for i = 1:N
+            A[i,i] = 0.0
+        end
+        A_in = hcat(A_in, vec(A))
+    end
+    return A_in
 end
+A_in = gen_A(N,Q)
 c = c0
 
-
+# Function to replicate
 function clearing_vec!(F, p, x, p_bar, A, c)
     # when the system is solved, F is zero
     F .= p.-min.(p_bar,max.(A'*p .+c .- x,0))
@@ -103,16 +108,16 @@ function p_func(x, p_bar, A, c)
 end
 
 ## Training NN
-
+m = 20 #size of training set
 x_train = vcat(x,A_in)
-x_test = x_train[:,Q-29:end]
-x_train = x_train[:,1:Q - 30]
-y_train = zeros(N,Q-30)
-y_test = zeros(N,30)
-for i = 1:Q-30
+x_test = x_train[:,Q-m+1:end]
+x_train = x_train[:,1:Q - m]
+y_train = zeros(N,Q-m)
+y_test = zeros(N,m)
+for i = 1:Q-m
     y_train[:,i] = p_func(x_train[1:N,i],p_bar,reshape(x_train[N+1:end,i], (N,N)),c) 
 end
-for i = 1:30
+for i = 1:m
     y_test[:,i] = p_func(x_test[1:N,i],p_bar,reshape(x_test[N+1:end,i], (N,N)),c) 
 end
 
@@ -122,7 +127,9 @@ loss(x, y) = Flux.mse(model(x), y)
 ps = Flux.params(model)
 train_loader = DataLoader((x_train, y_train), batchsize=2, shuffle=true)
 opt = Descent()
-Flux.@epochs 5 Flux.train!(loss, ps, ncycle(train_loader, 10), opt)
 
-test_error = mean(sum(abs2, Array(model(x_test[:,i])) .- p_func(x_test[1:N,i],p_bar,reshape(x_train[N+1:end,i], (N,N)),c)) for i in 1:M)
+evalcb() = @show(loss(x_test,y_test))
+init_loss = loss(x_test,y_test)
+
+Flux.@epochs 50 Flux.train!(loss, ps, ncycle(train_loader, 1), opt, cb  = throttle(evalcb,50))
 
