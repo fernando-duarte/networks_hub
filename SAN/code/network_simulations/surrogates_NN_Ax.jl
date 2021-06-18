@@ -1,9 +1,7 @@
 import Pkg
 Pkg.activate("benchmark_timing")
 Pkg.instantiate()
-Pkg.add("CUDA")
-Pkg.add("Flux")
-Pkg.add("IterTools")
+
 using XLSX, DataFrames, Random, Test, NLsolve, Distributions, BenchmarkTools, LinearAlgebra, CUDA
 using Surrogates, Flux
 using Flux.Data: DataLoader
@@ -11,8 +9,8 @@ using IterTools: ncycle
 using Flux: throttle
 
 # User Inputs
-N = 100 #number of points
-Q = 100 #number of samples
+N = 5 #number of points
+Q = 10000 #number of samples
 
 # Loading Data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -108,7 +106,7 @@ function p_func(x, p_bar, A, c)
 end
 
 ## Training NN
-m = 20 #size of training set
+m = Int(Q/10) #size of test set
 x_train = vcat(x,A_in)
 x_test = x_train[:,Q-m+1:end]
 x_train = x_train[:,1:Q - m]
@@ -124,12 +122,25 @@ end
 model = Chain(Dense(N*N+N, 20, relu), Dense(20,20,relu), Dense(20, N))
 loss(x, y) = Flux.mse(model(x), y)
 
-ps = Flux.params(model)
-train_loader = DataLoader((x_train, y_train), batchsize=2, shuffle=true)
-opt = Descent()
+ps = Flux.params(model) #parameters that update
+int_params = ps
+train_loader = DataLoader((x_train, y_train), batchsize=5, shuffle=true)
 
+# Choosing Gradient Descent option
+#opt = Descent()
+#opt = Nesterov(0.003, 0.95)
+#opt = Momentum(0.01, 0.99)
+opt = ADAM(0.001, (0.9, 0.8))
+#opt = RADAM(0.001, (0.9, 0.8))
+#opt = AdaMax(0.001, (0.9, 0.995))
+#opt = ADADelta(ρ = 0.9)
+#opt = ADAGrad(0.001)
+
+## Setting up Call backs
 evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
-Flux.@epochs 50 Flux.train!(loss, ps, ncycle(train_loader, 1), opt, cb  = throttle(evalcb,50))
+## Training
+Flux.@epochs 50 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,50))
 
+#ADAM = 3.71e-6  after 50 iterations
