@@ -141,28 +141,21 @@ for i = 1:m
     y_test[:,i] = p_func(x_test[1:N,i],p_bar,reshape(x_test[2*N+1:end,i], (N,N)),x_test[N+1:2*N,i]) 
 end
 
-model = Chain(Dense(N*N+2*N, 20, relu), Dense(20,20,relu), Dense(20,20,relu), Dense(20, N))
+model = Chain(Dense(N*N+2*N, 50, σ), Dense(50,20,σ), Dense(20,10,σ), Dense(10,5,σ), Dense(5, N))
 loss(x, y) = Flux.mse(model(x), y)
 
 ps = Flux.params(model) #parameters that update
 int_params = ps
-train_loader = DataLoader((x_train, y_train), batchsize=5, shuffle=true)
+train_loader = DataLoader((x_train, y_train), batchsize=100, shuffle=true)
 
 # Choosing Gradient Descent option
-#opt = Descent()
-#opt = Nesterov(0.003, 0.95)
-#opt = Momentum(0.01, 0.99)
 opt = ADAM(0.001, (0.9, 0.8))
-#opt = RADAM(0.001, (0.9, 0.8))
-#opt = AdaMax(0.001, (0.9, 0.995))
-#opt = ADADelta(ρ = 0.9)
-#opt = ADAGrad(0.001)
 
 ## Setting up Call backs
 evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 50 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,50))
+Flux.@epochs 50 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,50))
 
 #ADAM = .0001  after 50 iterations
