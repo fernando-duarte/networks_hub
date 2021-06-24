@@ -7,10 +7,11 @@ using Surrogates, Flux
 using Flux.Data: DataLoader
 using IterTools: ncycle
 using Flux: throttle
+using ForwardDiff
 
 # User Inputs
-N = 25 #number of points
-Q = 10000 #number of samples
+N = 5 #number of points
+Q = 1000 #number of samples
 
 # Loading Data
 xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
@@ -129,16 +130,16 @@ end
 
 ## Training NN
 m = Int(Q/10) #size of test set
-x_train = vcat(x_in,c_in,A_in)
+x_train = vcat(A_in, c_in, x_in) #order is A, b,c,x
 x_test = x_train[:,Q-m+1:end]
 x_train = x_train[:,1:Q - m]
 y_train = zeros(N,Q-m)
 y_test = zeros(N,m)
 for i = 1:Q-m
-    y_train[:,i] = p_func(x_train[1:N,i],p_bar,reshape(x_train[2*N+1:end,i], (N,N)),x_train[N+1:2*N,i]) 
+    y_train[:,i] = p_func(x_train[N*N+N:end,i],p_bar,reshape(x_train[1:N*N,i], (N,N)),x_train[N*N+1:N*N+N,i]) 
 end
 for i = 1:m
-    y_test[:,i] = p_func(x_test[1:N,i],p_bar,reshape(x_test[2*N+1:end,i], (N,N)),x_test[N+1:2*N,i]) 
+    y_test[:,i] = p_func(x_test[N*N+N:end,i],p_bar,reshape(x_test[1:N*N,i], (N,N)),x_test[N*N+1:N*N+N,i]) 
 end
 
 model = Chain(Dense(N*N+2*N, 50, σ), Dense(50,20,σ), Dense(20,10,σ), Dense(10,5,σ), Dense(5, N))
@@ -156,6 +157,22 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 50 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,50))
+Flux.@epochs 5 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,50))
 
-#ADAM = .0001  after 50 iterations
+# Computing Jacobian and Hessian
+j = x -> ForwardDiff.jacobian(model, x)
+j(x_test[:,1])
+
+## Creating many functions for each output of the NN
+function model1(x) 
+    model(x)[1]
+end
+function model2(x) 
+    model(x)[2]
+end
+
+h1 = x -> ForwardDiff.hessian(model1, x)
+h1(x_test[:,1])
+h2 = x -> ForwardDiff.hessian(model2, x)
+h2(x_test[:,1])
+
