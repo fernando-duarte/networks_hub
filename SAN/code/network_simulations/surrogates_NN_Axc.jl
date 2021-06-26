@@ -1,6 +1,6 @@
-# import Pkg
-# Pkg.activate("benchmark_timing")
-# Pkg.instantiate()
+import Pkg
+Pkg.activate("benchmark_timing")
+Pkg.instantiate()
 
 using XLSX, DataFrames, Random, Test, NLsolve, Distributions, BenchmarkTools, LinearAlgebra, CUDA
 using Surrogates, Flux
