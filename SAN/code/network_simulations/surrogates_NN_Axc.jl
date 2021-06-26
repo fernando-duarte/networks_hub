@@ -1,6 +1,6 @@
-import Pkg
-Pkg.activate("benchmark_timing")
-Pkg.instantiate()
+# import Pkg
+# Pkg.activate("benchmark_timing")
+# Pkg.instantiate()
 
 using XLSX, DataFrames, Random, Test, NLsolve, Distributions, BenchmarkTools, LinearAlgebra, CUDA
 using Surrogates, Flux
@@ -10,67 +10,32 @@ using Flux: throttle
 using ForwardDiff
 using Convex, SCS, LinearAlgebra, Distributions, Test, Random, MathOptInterface, Parameters, Suppressor
 const MOI = MathOptInterface
-include("generateA.jl")
-using .generateA
-
+using BSON
+using BSON: @load, @save
+include("NetworkUtils.jl")
+using .NetworkUtils
 
 # User Inputs
+T=Float64
 N = 5 #number of points
-Q = 1000 #number of samples
-max_iter = 10000
+Q = 10#500000 #number of samples
+max_iter = 2*Q 
 
-# Loading Data
-xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
-data = vcat( [(XLSX.eachtablerow(xf[s]) |> DataFrames.DataFrame) for s in XLSX.sheetnames(xf)]... ) #for s in XLSX.sheetnames(xf) if (s!="Aggregates Composition" && s!="Dealer Aggregates" && s!="Approx Aggregates")
-unique!(data) # delete duplicate rows, use `nonunique(data)` to see if there are any duplicates
-data = data[isequal.(data.qt_dt,195), :] # keep quarter == 195 = 2008q4
-sort!(data, :assets, rev = true)
-data = data[1:N,:] # keep small number of nodes, for testing
-units = 1e6;
-data[:,[:w, :c, :assets, :p_bar, :b]] .= data[!,[:w, :c, :assets, :p_bar, :b]]./units
-
-
-col_with_miss = names(data)[[any(ismissing.(col)) for col = eachcol(data)]] # columns with at least one missing
-data_nm = coalesce.(data, data.assets/1.5) # replace missing by a value
-nm_c = findall(x->x==0,ismissing.(data.c))
-nm_b = findall(x->x==0,ismissing.(data.b))
-dropmissing(data, [:delta, :delta_alt, :w, :assets, :p_bar]) # remove type missing
-
-names(data) # column names
-describe(data)
-show(data, allcols = true)
-
-p_bar = data.p_bar
-assets = data.assets
-delta = data.delta
-w= data.w
-g0 = 0.05   # bankruptcy cost
+# get network
+# net = Network{T,5}()
+data_dict = BSON.load("data.bson")
+net = netEmp(data_dict[:data],5)[1]
+@unpack p_bar, a, delta, w, γ = net
+assets = a
+g0 = γ
 
 # initial guess
 rng =  Random.seed!(123)
 A0 = zeros(N,N)
-c0 =  data_nm.c 
-b0 = data_nm.b
-α0 = 1.0*ones(N)
-β0= []
-
-for i=1:N
-    function ff!(F, x)
-        F[1] = 1-cdf(Beta(α0[i],x[1]),w[i]/c0[i])-delta[i] 
-    end
-    if i==1
-        sol = nlsolve(ff!,[50.0])
-        val = sol.zero[1]
-    else
-        try
-            sol = nlsolve(ff!,[2.0])
-            val = sol.zero[1]
-        catch
-            val = 25.0
-        end
-    end
-    push!(β0,val)
-end
+c0 =  net.c 
+b0 = net.b
+α0 = fill(1.0,N)
+β0= fill(10.0,N)
 
 # Generate Inputs
 
@@ -97,7 +62,7 @@ function gen_A(N,Q)
     end
     A_in = vec(A_in)
     for i = 1:Q-1
-        A=rand(N,N)./(50 .* rand(1))
+        A=rand(N,N)./(3 0 .* rand(1))
         R = 0.01* (s*rand(N, N).-s/2)
         for i = 1:N
             A[i,i] = 0.0
@@ -107,13 +72,15 @@ function gen_A(N,Q)
     return A_in
 end
 
-A_in = gen_A(N,Q)
-A_in_alt = trainingSetA(N,sample_size=Int(Q/2),max_iter=max_iter,con="netting") # N=5 nodes, can use for training NN
-for i = 1:N^2
-    for j = 1:Int(Q/2)
-        A_in[i,j] = vcat(A_in_alt[j]...)[i]
-    end
-end
+halfQ =Q÷2
+A_in_orig = mod(Q,2)==0 ? gen_A(N,halfQ) : gen_A(N,halfQ+1)
+A_in_alt = trainingSetA(N,sample_size=halfQ,max_iter=max_iter,con="netting") # N=5 nodes, can use for training NN
+A_in = hcat(A_in_orig,hcat(reshape.(A_in_alt,N^2)...))
+# for i = 1:N^2
+#     for j = 1:Int(Q/2)
+#         A_in[i,j] = vcat(A_in_alt[j]...)[i]
+#     end
+# end
 
 # Making c
 function gen_c(N,Q)
@@ -153,7 +120,7 @@ function p_func(x, p_bar, A, c)
 end
 
 ## Training NN
-m = Int(Q/10) #number of observations in test set
+m = Int(Q÷10) #number of observations in test set
 x_train = vcat(A_in, b_in, c_in, x_in) #order is A, b,c,x
 x_train = x_train[:,randperm(Q)] #randomly sort columns of X_train
 x_test = x_train[:,1:m]
@@ -167,12 +134,17 @@ for i = 1:m
     y_test[:,i] = p_func(x_test[N*N+2*N+1:end,i],p_bar,reshape(x_test[1:N*N,i], (N,N)),x_test[N*N+N+1:N*N+2*N,i]) 
 end
 
-model = Chain(Dense(N*N+3*N, 50, σ), Dense(50,20,σ), Dense(20,10,σ), Dense(10,5,σ), Dense(5, N))
+x_train = gpu(x_train)
+y_train = gpu(y_train) 
+x_test = gpu(x_test)
+y_test = gpu(y_test) 
+
+model = gpu(Chain(Dense(N*N+3*N, 50, σ), Dense(50,20,σ), Dense(20,10,σ), Dense(10,10,relu), Dense(10,5,σ), Dense(5, N)))
 loss(x, y) = Flux.mse(model(x), y)
 
 ps = Flux.params(model) #parameters that update
 int_params = ps
-train_loader = DataLoader((x_train, y_train), batchsize=100, shuffle=true)
+train_loader = gpu(DataLoader((x_train, y_train), batchsize=500, shuffle=true))
 
 # Choosing Gradient Descent option
 opt = ADAM(0.001, (0.9, 0.8))
@@ -182,7 +154,25 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 150 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,50))
+Flux.@epochs 1500 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
+
+model = cpu(model) # move back to cpu to save
+@save "clearing_p_NN_gpu.bson" model
+#@load "clearing_p_NN_gpu.bson" model
+
+model = gpu(model)
+opt = ADAM(1e-6, (0.9, 0.8))
+Flux.@epochs 1500 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
+model = cpu(model) # move back to cpu to save
+@save "clearing_p_NN_gpu.bson" model
+
+model = gpu(model)
+opt = NADAM()
+Flux.@epochs 150 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
+model = cpu(model) # move back to cpu to save
+@save "clearing_p_NN_gpu.bson" model
+
+#=
 
 # Computing Jacobian and Hessian
 j = x -> ForwardDiff.jacobian(model, x)
@@ -235,3 +225,5 @@ h_p(x_test[:,1]) #doesn't work unclear why
     @test loss(x_test,y_test) < 0.01
       
 end;
+
+=#
