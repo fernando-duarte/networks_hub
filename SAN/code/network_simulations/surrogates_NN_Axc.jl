@@ -8,7 +8,7 @@ using Flux.Data: DataLoader
 using IterTools: ncycle
 using Flux: throttle
 using ForwardDiff
-using Convex, SCS, LinearAlgebra, Distributions, Test, Random, MathOptInterface, Parameters, Suppressor
+using Convex, SCS, MathOptInterface, Parameters, Suppressor
 const MOI = MathOptInterface
 using BSON
 using BSON: @load, @save
@@ -16,9 +16,9 @@ include("NetworkUtils.jl")
 using .NetworkUtils
 
 # User Inputs
-T=Float64
+T=Float32
 N = 5 #number of points
-Q = 10#500000 #number of samples
+Q = 500000 #number of samples
 max_iter = 2*Q 
 
 # get network
@@ -62,7 +62,7 @@ function gen_A(N,Q)
     end
     A_in = vec(A_in)
     for i = 1:Q-1
-        A=rand(N,N)./(3 0 .* rand(1))
+        A=rand(N,N)./(30 .* rand(1))
         R = 0.01* (s*rand(N, N).-s/2)
         for i = 1:N
             A[i,i] = 0.0
