@@ -5,36 +5,13 @@ using ForwardDiff
 using InteractiveErrors
 include("IncBetaDer.jl")
 
+include("NetworkUtils.jl")
+using .NetworkUtils
+
 ## load data
-
-xf = XLSX.readxlsx("node_stats_forsimulation_all.xlsx") 
-data = vcat( [(XLSX.eachtablerow(xf[s]) |> DataFrames.DataFrame) for s in XLSX.sheetnames(xf)]... ) #for s in XLSX.sheetnames(xf) if (s!="Aggregates Composition" && s!="Dealer Aggregates" && s!="Approx Aggregates")
-unique!(data) # delete duplicate rows, use `nonunique(data)` to see if there are any duplicates
-data = data[isequal.(data.qt_dt,195), :] # keep quarter == 195 = 2008q4
-sort!(data, :assets, rev = true)
-units = 1e6;
-data[:,[:w, :c, :assets, :p_bar, :b]] .= data[!,[:w, :c, :assets, :p_bar, :b]]./units
-# data.b[:] .= missing
-# data.c[:] .= missing
-
-col_with_miss = names(data)[[any(ismissing.(col)) for col = eachcol(data)]] # columns with at least one missing
-data_nm = coalesce.(data, data.assets/1.5) # replace missing by a value
-nm_c = findall(x->x==0,ismissing.(data.c))
-nm_b = findall(x->x==0,ismissing.(data.b))
-dropmissing(data, [:delta, :delta_alt, :w, :assets, :p_bar]) # remove type missing
-
-names(data) # column names
-describe(data)
-show(data, allcols = true)
-
 N=5
-T = Float64
-temp = Array{T}(data[1:N,[:delta, :delta_alt, :w, :assets, :p_bar]])
-delta = copy(temp[:,1]); 
-delta_alt = copy(temp[:,2]);
-w = copy(temp[:,3]); 
-assets= copy(temp[:,4]);
-p_bar = copy(temp[:,5]);
+data_dict = BSON.load("data.bson")
+net = netEmp(data_dict[:data],N)[1]
 
 γ = T(0)
 mini_batch = 10;
