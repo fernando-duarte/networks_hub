@@ -17,14 +17,14 @@ using .NetworkUtils
 
 # User Inputs
 T=Float32
-N = 5 #number of points
-Q = 500000 #number of samples
+N = 25 #number of points
+Q = 5000 #number of samples
 max_iter = 2*Q 
 
 # get network
 # net = Network{T,5}()
 data_dict = BSON.load("data.bson")
-net = netEmp(data_dict[:data],5)[1]
+net = netEmp(data_dict[:data],N)[1]
 @unpack p_bar, a, delta, w, γ = net
 assets = a
 g0 = γ
@@ -134,17 +134,16 @@ for i = 1:m
     y_test[:,i] = p_func(x_test[N*N+2*N+1:end,i],p_bar,reshape(x_test[1:N*N,i], (N,N)),x_test[N*N+N+1:N*N+2*N,i]) 
 end
 
+loss(x,y) = Flux.mse(model(x),y)
+model = gpu(Chain(Dense(N*N+3*N, 50, σ), Dense(50,20,σ), Dense(20,10,σ), Dense(10,10,relu), Dense(10,5,σ), Dense(5, N)))
+
 x_train = gpu(x_train)
 y_train = gpu(y_train) 
 x_test = gpu(x_test)
 y_test = gpu(y_test) 
 
-model = gpu(Chain(Dense(N*N+3*N, 50, σ), Dense(50,20,σ), Dense(20,10,σ), Dense(10,10,relu), Dense(10,5,σ), Dense(5, N)))
-loss(x, y) = Flux.mse(model(x), y)
-
-ps = Flux.params(model) #parameters that update
-int_params = ps
-train_loader = gpu(DataLoader((x_train, y_train), batchsize=500, shuffle=true))
+ps = Flux.params(model)
+train_loader = gpu(DataLoader((x_train, y_train), batchsize=50, shuffle=true))
 
 # Choosing Gradient Descent option
 opt = ADAM(0.001, (0.9, 0.8))
@@ -154,7 +153,26 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 1500 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
+Flux.@epochs 300 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
+
+## Testing
+@testset "Neural Net Check" begin
+    @test loss(x_train,y_train) < 0.01
+    @test mean(abs, model(x_train) - y_train) < 0.01
+    @test loss(x_test,y_test) < 0.01  
+    @test mean(abs, model(x_test) - y_test) < 0.01
+end;
+
+display(mean(abs,model(x_train) - y_train))
+display(mean(abs,model(x_test) - y_test)) 
+display(mean(model(x_train) - y_train)) #checking if mean 0 
+display(mean(model(x_test) - y_test)) #checking if mean 0
+
+model = cpu(model)
+@save "clearing_p_NN_gpu_N$N.bson" model
+
+
+#=
 
 model = cpu(model) # move back to cpu to save
 @save "clearing_p_NN_gpu.bson" model
