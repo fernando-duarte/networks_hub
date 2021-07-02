@@ -17,12 +17,12 @@ using .NetworkUtils
 
 # User Inputs
 T=Float32
-N = 25 #number of points
-Q = 5000 #number of samples
+N = 5 #number of points
+Q = 20000 #number of samples
 max_iter = 2*Q 
 
 # get network
-# net = Network{T,5}()
+# net = Network{T,N}()
 data_dict = BSON.load("data.bson")
 net = netEmp(data_dict[:data],N)[1]
 @unpack p_bar, a, delta, w, γ = net
@@ -34,8 +34,8 @@ rng =  Random.seed!(123)
 A0 = zeros(N,N)
 c0 =  net.c 
 b0 = net.b
-α0 = fill(1.0,N)
-β0= fill(10.0,N)
+α0 = fill(1.5,N)
+β0= fill(15.0,N)
 
 # Generate Inputs
 
@@ -44,7 +44,7 @@ function gen_x(N,Q,α0,β0)
     x = zeros(N,Q)
    for i = 1:N
         for j = 1:Q
-            x[i,j] = rand(Beta(α0[i]+rand(1)[1]-0.5,β0[i]+ 10* (rand(1)[1]-0.5)), 1)[1] #drawing from distributions close to Beta(α0,β0)  but not quite. 
+            x[i,j] = rand(Beta(α0[i]+rand(1)[1]-0.5,β0[i]+ 12* (rand(1)[1]-0.5)), 1)[1] #drawing from distributions close to Beta(α0,β0)  but not quite. 
         end
     end
     return x
@@ -143,7 +143,7 @@ x_test = gpu(x_test)
 y_test = gpu(y_test) 
 
 ps = Flux.params(model)
-train_loader = gpu(DataLoader((x_train, y_train), batchsize=50, shuffle=true))
+train_loader = gpu(DataLoader((x_train, y_train), batchsize=100, shuffle=true))
 
 # Choosing Gradient Descent option
 opt = ADAM(0.001, (0.9, 0.8))
@@ -153,20 +153,20 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 300 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
+Flux.@epochs 500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 
 ## Testing
 @testset "Neural Net Check" begin
-    @test loss(x_train,y_train) < 0.01
+    #Training set MSE and Abs Error
+    @test loss(x_train,y_train) < 0.01 
     @test mean(abs, model(x_train) - y_train) < 0.01
+    #Test set MSE and Abs Error
     @test loss(x_test,y_test) < 0.01  
     @test mean(abs, model(x_test) - y_test) < 0.01
+    #Test set each prediction within 0.01
+    @test abs.(model(x_test) - y_test) .< 0.01
 end;
-
-display(mean(abs,model(x_train) - y_train))
-display(mean(abs,model(x_test) - y_test)) 
-display(mean(model(x_train) - y_train)) #checking if mean 0 
-display(mean(model(x_test) - y_test)) #checking if mean 0
+pct_failing = sum(abs.(model(x_test) - y_test) .> 0.01)/(size(y_test,1)*size(y_test,2))
 
 model = cpu(model)
 @save "clearing_p_NN_gpu_N$N.bson" model
