@@ -1,262 +1,14 @@
-# module NetworkUtils2
-
-# using Convex, SCS, NLsolve
-# using LinearAlgebra, Distributions, Random, SpecialFunctions,  SparseArrays, MeasureTheory
-# using BenchmarkTools, Test
-# using DataFrames, BSON, XLSX, JLD2, Missings
-# using Dates, MonthlyDates
-# # using Plots, Gadfly, Cairo, Fontconfig, LightGraphs, SimpleWeightedGraphs, GraphRecipes
-# using Setfield, Parameters, Suppressor, Flatten
-# using MathOptInterface
-# const MOI = MathOptInterface
-# using Reexport
-
-# include("IncBetaDer.jl")
-# using .IncBetaDer
-# @reexport using .NetworkType
-# export optimParam, c_lin, c_quad, c_chance, c_p, c_pNL, c_, c_NL, c_, c_NL, obj, obj_full, loss_d
-
-
-
-using BSON, DataFrames, LinearAlgebra, SparseArrays, Parameters, Statistics, NLsolve, Quadrature, Cuba,  DistributionsAD, SpecialFunctions, BlockArrays, Revise
-import Distributions
-include("NetworkType.jl"); using .NetworkType
-include("IncBetaDer.jl"); #using .IncBetaDer
-
-## instantiate
 T=Float64
 const N=5
-mini_batch=3
-data_dict = BSON.load("data.bson")
-network = netEmp(data_dict[:data],5)[1]
-@unpack w, p_bar, delta, γ, a = network
-M = N^2+4*N+N*mini_batch
+mini_batch=1
 
-# network constants
-# z = vcat(A...,b,c,α,β,p_clear...)
-
-# constants for linear constraints
-# hᵀz=q
-h₁₁ᵀ = hcat(sparse(kron(Matrix{T}(I,N,N),p_bar')))
-h₁ᵀ = hcat(h₁₁ᵀ,spzeros(T,N,N),sparse(I,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,mini_batch*N))
-q₁ = a
-
-h₂₁ᵀ = repeat(spdiagm(p_bar),1,N)
-h₂ᵀ = hcat(h₂₁ᵀ,sparse(I,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,mini_batch*N))
-q₂ = p_bar
-
-hᵀ = vcat(h₁ᵀ,h₂ᵀ)
-q = vcat(q₁,q₂)
-
-# constants for quadratic constraints
-# zᵀHz = 0
-li = LinearIndices((N,N))
-liᵀ= transpose(li)
-id = li[tril!(trues(N,N), 0)]
-idᵀ = liᵀ[tril!(trues(N,N), 0)]
-H = sparse(vcat(id,idᵀ),vcat(idᵀ,id),T(0.5),M,M)
-# add a linear term to the quadratic form
-# zᵀHz + h₃ᵀz = q₃
-#h₃ᵀ = spzeros(T,(1,M))
-#q₃ = spzeros(T,1)
-
-const selA  = sparse(1:N^2,1:N^2,T(1),N^2,M)
-const selb  = sparse(1:N,N^2+1:N^2+N,T(1),N,M)
-const selc  = sparse(1:N,N^2+N+1:N^2+2N,T(1),N,M)
-const selα  = sparse(1:N,N^2+2N+1:N^2+3N,T(1),N,M)
-const selβ  = sparse(1:N,N^2+3N+1:N^2+4N,T(1),N,M)
-const selp  = sparse(1:mini_batch*N,N^2+4N+1:M,T(1),mini_batch*N,M)
-
-
-## constraints and objective
-# hᵀz=q
-function c_lin(z,p)
-    q, hᵀ = p[4N+2:6N+1], reshape(p[6N+2:6N+1+2N*M],2N,M)
-    return hᵀ*z - q  #hᵀz=q
-end
-
-# zᵀHz = 0
-function c_quad(z,p)
-    H  = reshape(p[6N+2+2N*M:6N+1+2N*M+M^2],M,M)
-    return dot(z,H*z) #transpose(z)*H*z
-end
-
-## chance constraints ⟺ c_chance(z)=0
-# Prob(c[i]x[i]>=w[i])=delta[i]
-beta_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x)
-function c_chance(z,p)
-    c, α, β = selc*z, selα*z, selβ*z
-    w, delta = p[1:N], p[2N+1:3N]
-    zeroz = zero(z[1])+0.0001
-    onez = one(z[1])-0.0001
-    return beta_ccdf.(α,β,max.(min.(w./c,onez),zeroz) ) .- delta
-end
-
-## clearing vector constraint
-# contraction map
-function contraction(z,p,x)
-    mb = size(x,2)
-    c, p_clear, Aᵀ = selc*z, reshape(selp*z,N,mb), transpose(reshape(selA*z,N,N))
-    p_bar, γ = p[N+1:2N], p[3N+1]
-    p_bar_rep = repeat(p_bar,1,mb)
-    c_rep = repeat(c,1,mb)
-    return reshape( min.(max.(0.0,(1+γ)*(Aᵀ*p_clear + (one(x[1]) .- x).*c_rep) - γ*p_bar_rep),p_bar_rep) ,N*mb)
-end
-
-function c_p(z,p,x)
-    #mb = size(x,2)
-    p_clear = selp*z
-    return p_clear - contraction(z,p,x)
-end
-
-function p_contraction(z, p, x, n::Integer)
-    mb = size(x,2)
-    p_bar, γ = p[N+1:2N], p[3N+1]
-    p_bar_rep = repeat(p_bar,mb)
-    znop = z[1:N^2+4N]
-    n <= 0 ? p_bar_rep : contraction(vcat(znop,p_contraction(z,p,x,n-1)),p,x)
-end
-
-function p_nlsolve(z,p,x)
-    mb = size(x,2)
-    p_bar = p[N+1:2N]
-    p_bar_rep = repeat(p_bar,mb)
-    znop = z[1:N^2+4N]
-    nlsolve(p_clear -> c_p(vcat(znop,p_clear),p,x),p_bar_rep).zero
-end
-
-function _c(z,p,x)
-    vcat(
-        c_lin(z,p),
-        c_quad(z,p),
-        c_chance(z,p),
-        c_p(z,p,x)
-        )
-end
-
-function _c(z,p)
-    vcat(
-        c_lin(z,p),
-        c_quad(z,p),
-        c_chance(z,p)
-        )
-end
-
-function obj_full(obj_num,p)
-    p_bar = p[N+1:2N]
-    obj_num .+ sum(p_bar)
-end
-
-
-function obj(z,p)
-    mb = size(selp,1)÷N
-    c, α, β, p_clear = selc*z, selα*z, selβ*z, reshape(selp*z,N,mb)
-    Ex = α./(α + β)
-    return sum(c.*Ex) - sum(mean(p_clear,dims=2))
-end
-
-function obj_contraction(z,p,x)
-    mb = size(x,2)
-    p_clear= reshape(p_contraction(z, p, x, 3),N,mb)
-    c = selc*z
-    return sum(c.*x,dims=1)-sum(p_clear,dims=1) # spillovers for network
-    #return sum(c.*α./(α + β))-sum(mean(p.zero,dims=2))
-end
-
-function obj_nlsolve(z,p,x)
-    mb = size(x,2)
-    p_clear= reshape(p_nlsolve(z,p,x),N,mb)
-    c = selc*z
-    return sum(c.*x,dims=1)-sum(p_clear,dims=1) # spillovers for network
-    #return sum(c.*α./(α + β))-sum(mean(p.zero,dims=2))
-end
-
-
-function betaprod_pdf(x,a,b)
-    k = prod(beta.(a,b))
-    betaprod_density(x,a,b)/k
-end
-function betaprod_density(x,a,b)
-    prod(x.^(a .- 1.0) .* (1.0 .- x).^(b .- 1.0),dims=1)
-end
-
-function betaprod_pdf!(x,a,b,f)
-    k = prod(beta.(a,b))
-    betaprod_density!(x,a,b,f)/k
-end
-
-function betaprod_density!(x,a,b,f)
-   f[1,:] .= 1.0
-   Threads.@threads for j in 1:size(x,2)
-       for i in 1:size(x, 1)
-           f[1, j] *=  x[i,j]^(a[i] - 1.0) * (1.0 - x[i,j])^(b[i] - 1.0)
-       end
-   end
-end
-ff=zeros(1,mini_batch)
-@testset "threaded beta prob" begin
-for ntest=1:100
-    xtest=rand(N,mini_batch)
-    betaprod_density!(xtest,selα*z0,selβ*z0,ff)
-    @test isapprox(ff ,betaprod_density(xtest,selα*z0,selβ*z0))
-    @test isapprox(ff ,betaprod_density(xtest,selα*z0,selβ*z0))
-end
-end
-
-
-function int_nlsolve(dx,x,zp)
-    z, p = zp[1:M], zp[M+1:6N+1+2N*M+M^2]
-    c, α, β = selc*z, selα*z, selβ*z
-    obj_x(x) = obj_nlsolve(z,p,x)
-    beta_pdf(x) = betaprod_pdf(x,α,β)   # exp.(logpdf(Product(Beta.(α,β)),x))
-    dx .= obj_x(x).*beta_pdf(x)
-end
-
-function int_cont(dx,x,zp)
-  z, p = zp[1:M], zp[M+1:6N+1+2N*M+M^2]
-  c, α, β = selc*z, selα*z, selβ*z
-  obj_x(x) = obj_contraction(z,p,x)
-  #beta_pdf(x) = betaprod_pdf(x,α,β)   # exp.(logpdf(Product(Beta.(α,β)),x))
-  beta_pdf(x) = betaprod_pdf(x,α,β)   # exp.(logpdf(Product(Beta.(α,β)),x))
-  dx .= obj_x(x).*beta_pdf(x)
-end
-
-function obj_nlsolve_int(z,p)
-    mb = size(selp,1)÷N
-    prob = QuadratureProblem(int_nlsolve,zeros(N),ones(N),vcat(z,p),batch=mb)
-    sol = Quadrature.solve(prob,CubaCuhre(),reltol=1e-2,abstol=1e-2)[1]
-end
-
-
-function obj_cont_int(z,p)
-    mb = size(selp,1)÷N
-    prob = QuadratureProblem(int_cont,zeros(N),ones(N),vcat(z,p),batch=mb)
-    sol = Quadrature.solve(prob,CubaCuhre(),reltol=1e-1,abstol=1e-1)[1]
-end
-
-# upper and lower bounds
-# low<=z<=upp
-lowα = 0.5 ;uppα = 10
-lowβ = 1   ;uppβ = 30
-low_zero = eps(T) # eps(T) T(0.005)
-low = vcat(spzeros(T,N^2),fill(low_zero,N),fill(low_zero,N),fill(lowα,N),fill(lowβ,N),fill(low_zero,N*mini_batch))
-low = Array(low)
-upp = vcat(ones(T,N^2),p_bar,a,Array{T}(fill(uppα,N)),Array{T}(fill(uppβ,N)),repeat(p_bar,mini_batch))
-
-p_sparse = vcat(w, p_bar, delta, γ, a ,q ,hᵀ...,H...)
-p_dense =  vcat(w, p_bar, delta, γ, a ,q,Array(hᵀ)...,Array(H)...)
-
-z0 = low + (upp-low)/2;
-A0 = (LowerTriangular(ones(N,N))-Matrix(I,N,N))/2
-z0[1:N^2] = [A0...]
-p0 = p_dense
+include("NU2_preamble.jl")
 
 c_lin(z0,p0)
 c_quad(z0,p0)
 c_chance(z0,p0)
 _c(z0,p0)
 
-x0 = ones(N,mini_batch)/10
 c_p(z0,p0,x0)
 _c(z0,p0,x0)
 
@@ -265,23 +17,26 @@ p1=p_contraction(z0, p0, x0, 10)
 p2=p_nlsolve(z0,p0,x0)
 p1 ≈ p2
 
+
 obj(z0,p0)
-obj_full(obj(z0,p0),p0)
-obj_full(obj_contraction(z0,p0,x0),p0)
-obj_full(obj_nlsolve(z0,p0,x0),p0)
-
-
 obj_contraction(z0,p0,x0)
 obj_nlsolve(z0,p0,x0)
 α,β= selα*z0,selβ*z0
 betaprod_pdf(x0,α,β)
 betaprod_density(x0,α,β)
 dx0=zeros(1,mini_batch)
-int_nlsolve(dx0,x0,vcat(z0,p0))
-int_cont(dx0,x0,vcat(z0,p0))
+int_nlsolve!(dx0,x0,vcat(z0,p0))
+int_cont!(dx0,x0,vcat(z0,p0))
+int_nlsolve(x0,vcat(z0,p0))
+int_cont(x0,vcat(z0,p0))
 obj_nlsolve_int(z0,p0)
 obj_cont_int(z0,p0)
+obj_nlsolve_intH(z0,p0)
+obj_cont_intH(z0,p0)
 
+obj_full(obj(z0,p0),p0)
+obj_full(obj_contraction(z0,p0,x0),p0)
+obj_full(obj_nlsolve(z0,p0,x0),p0)
 
 # integrate by drawing x
 dist_uni = Distributions.Product(Distributions.Uniform.(zeros(size(α)),ones(size(β))))
@@ -298,21 +53,108 @@ uni_block = BlockArray(uni_draw,[N],fill(mini_batch,num_draw ÷ mini_batch))
 beta_block = BlockArray(beta_draw,[N],fill(mini_batch,num_draw ÷ mini_batch))
 
 # using contraction mapping
-int_cont0(x) = int_cont(dx0,x,vcat(z0,p0))
+int_cont0(x) = int_cont!(dx0,x,vcat(z0,p0))
 obj_cont0(x) = obj_contraction(z0,p0,x)
 approx_uni  = mean([mean(int_cont0(view(uni_block, Block(i)))) for i=1:blocklength(uni_block)])
 approx_beta = mean([mean(obj_cont0(view(beta_block, Block(i)))) for i=1:blocklength(beta_block)])
 approx_int  = obj_cont_int(z0,p0)
 @show approx_uni, approx_beta, approx_int ;
 
-
 # using nlsolve
-int_nlsolve0(x) = int_nlsolve(dx0,x,vcat(z0,p0))
+int_nlsolve0(x) = int_nlsolve!(dx0,x,vcat(z0,p0))
 obj_nlsolve0(x) = obj_nlsolve(z0,p0,x)
 approx_uni = mean([mean(int_nlsolve0(view(uni_block, Block(i)))) for i=1:blocklength(uni_block)])
 approx_beta =mean([mean(obj_nlsolve0(view(beta_block, Block(i)))) for i=1:blocklength(beta_block)])
 approx_int = obj_nlsolve_int(z0,p0)
 @show approx_uni, approx_beta, approx_int ;
+
+# time cuba vs HCubature
+using Test, BenchmarkTools
+@btime obj_cont_int($z0,$p0)
+@btime obj_cont_intH($z0,$p0)
+
+# gradients and hessians of integrals
+using Zygote, ForwardDiff, FiniteDiff 
+testf(p) = obj_cont_int(z0,p)
+# gradients
+Zygote.gradient(testf,p0)
+ForwardDiff.gradient(testf,p0)
+FiniteDiff.finite_difference_gradient(testf,p0)
+
+# hessians
+@test_broken Zygote.hessian(testf,p0)
+@test_broken ForwardDiff.hessian(testf,p0)
+@test_broken Zygote.jacobian(p->Zygote.gradient(testf,p),p0)
+@test_broken ForwardDiff.jacobian(x->ForwardDiff.gradient(testf,x),p0)
+@test_broken Zygote.jacobian(p->ForwardDiff.gradient(testf,p),p0)
+@test_broken ForwardDiff.jacobian(x->Zygote.gradient(testf,x),p0)
+@test_broken Zygote.jacobian(x->FiniteDiff.finite_difference_gradient(testf,x),p0)
+
+# these do work but can be slow 
+@test_skip FiniteDiff.finite_difference_hessian(testf,p0)   
+@test_skip ForwardDiff.jacobian(x->FiniteDiff.finite_difference_gradient(testf,x),p0)
+@test_skip FiniteDiff.finite_difference_jacobian(x->ForwardDiff.gradient(testf,x),p0)
+@test_skip FiniteDiff.finite_difference_jacobian(x->Zygote.gradient(testf,x)[1],p0)
+
+## modlink toolkit
+using SparsityDetection, SparseArrays
+input = rand(10)
+output = similar(input)
+sparsity_pattern = jacobian_sparsity(f,output,input)
+jac = Float64.(sparse(sparsity_pattern))
+using SparseDiffTools
+colors = matrix_colors(jac)
+using FiniteDiff
+FiniteDiff.finite_difference_jacobian!(jac, f, rand(30), colorvec=colors)
+@show fcalls # 5
+forwarddiff_color_jacobian!(jac, f, x, colorvec = colors)
+
+     #https://github.com/JuliaStats/StatsFuns.jl/tree/an/nopdf
+## Modeling Toolkit
+using ModelingToolkit, GalacticOptim, Optim
+C = 2N+1 # number of constraints in _c(z,p)
+c_quad(z::Symbolics.Arr{Num},p::Symbolics.Arr{Num})=dot(z,Symbolics.scalarize(H*z))
+
+@variables z[1:M]
+@parameters p[1:P]
+loss = vcat(c_lin(z,p),c_quad(z,p),Symbolics.scalarize(c_p(z,p,x0)))
+sys = OptimizationSystem(loss,Symbolics.scalarize(vcat(x...,y...,A...)),σ)
+
+x0 = [1.0,1.0]
+y0 = [1.0,1.0,1.0]
+A0 = ones(3,3)
+u0 = [
+    Symbolics.scalarize(x .=> x0)...,
+    Symbolics.scalarize(y .=> y0)...,
+    Symbolics.scalarize(A .=> A0)...  
+]
+p_dense
+p = [
+    σ[1] => 6.0
+    σ[2] => 6.0
+]
+
+prob = OptimizationProblem(sys,u0,p,grad=true,hess=true)
+solve(prob,Newton())
+
+calculate_gradient(sys)
+cJ=generate_gradient(sys; parallel=Symbolics.MultithreadedForm())
+
+calculate_hessian
+
+generate_hessian
+hessian_sparsity
+    jacobian_sparsity
+    Joop, Jiip = eval.(generate_gradient(sys))
+    
+    multithreadedf = eval(ModelingToolkit.build_function(du,u,fillzeros=true,
+                      parallel=ModelingToolkit.MultithreadedForm())[2])
+
+#Joop(vars,params)
+Joop(map(x->x[2],u0),map(x->x[2],p))
+calculate_gradient(sys)
+
+
 
 ## JuMP
 using JuMP, Ipopt
@@ -832,14 +674,47 @@ dp2 = FiniteDiff.finite_difference_gradient(testf,p)
 dp3 = ForwardDiff.gradient(testf,p)
 dp1[1] ≈ dp2 ≈ dp3
 
-hp1 = Zygote.hessian(testf,p)
-hp2 = FiniteDiff.finite_difference_hessian(testf,p)
-hp3 = ForwardDiff.hessian(testf,p)
 
-Zygote.jacobian(p->Zygote.gradient(testf,p),p)
- jacobian(x -> gradient(testf, x)[1], p)[1]
-ForwardDiff.jacobian(x->ForwardDiff.gradient(testf,x),p)
 
-hess1 = ForwardDiff.jacobian(x->FiniteDiff.finite_difference_gradient(testf,x),p)
-hess2 = FiniteDiff.finite_difference_jacobian(x->ForwardDiff.gradient(testf,x),p)
-hess3 = FiniteDiff.finite_difference_hessian(testf,p)
+    
+    
+using ModelingToolkit, SparseArrays, Test, GalacticOptim, Optim
+
+@variables x y
+@parameters a b
+f(p1,p2)= p1+a*p2
+f(x,y)
+    
+loss = (a - x)^2 + b * (y - x^2)^2
+sys1 = OptimizationSystem(loss,[x,y],[a,b],name=:sys1)
+sys2 = OptimizationSystem(loss,[x,y],[a,b],name=:sys2)
+
+@variables z
+@parameters β
+loss2 = sys1.x - sys2.y + z*β
+combinedsys = OptimizationSystem(loss2,[z],[β],systems=[sys1,sys2],name=:combinedsys)
+
+equations(combinedsys)
+states(combinedsys)
+parameters(combinedsys)
+
+calculate_gradient(combinedsys)
+calculate_hessian(combinedsys)
+generate_function(combinedsys)
+generate_gradient(combinedsys)
+generate_hessian(combinedsys)
+ModelingToolkit.hessian_sparsity(combinedsys)
+    
+using ModelingToolkit  ,Symbolics
+@variables x[1:2] y[1:3] A[1:3,1:3]
+@parameters σ[1:2]
+eqs = [0 ~ σ[1]*x[1]*y[1]+σ[2]*x[2]+y[2]*y[3]]
+ns = NonlinearSystem(eqs, vcat(x...,y...,A...),σ)
+calculate_jacobian(ns)
+generate_jacobian(ns)
+generate_hessian(ns)
+ModelingToolkit.jacobian_sparsity(ns)
+structural_simplify(ns)
+ns
+    
+    
