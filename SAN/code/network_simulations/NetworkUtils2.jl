@@ -1,9 +1,24 @@
-T=Float64
-const N=5
-mini_batch=1
-
 include("NU2_preamble.jl")
 
+prob_ns = eval(f_noeval_good[1])
+
+
+@variables z[1:M]
+@parameters p[1:P]
+zcat = vcat(z...);
+pcat = vcat(p...);
+s_ceq = 0 .~ ceq(zcat,pcat)
+#ceq0 = ceq(z0,p_dense) # super slow
+
+ns = NonlinearSystem(s_ceq,z,p)
+prob_ns = NonlinearProblem(ns,z0,p_dense; check_length=false) #check_length=false
+sol_ns = solve(prob_ns,NewtonRaphson())
+clin(sol_ns.u,p_dense)
+c_quad(sol_ns.u,p_dense)
+c_p(sol_ns.u,p_dense, x0)
+
+
+######################################
 c_lin(z0,p0)
 c_quad(z0,p0)
 c_chance(z0,p0)
@@ -96,7 +111,7 @@ FiniteDiff.finite_difference_gradient(testf,p0)
 @test_skip FiniteDiff.finite_difference_jacobian(x->ForwardDiff.gradient(testf,x),p0)
 @test_skip FiniteDiff.finite_difference_jacobian(x->Zygote.gradient(testf,x)[1],p0)
 
-## modlink toolkit
+## modling toolkit
 using SparsityDetection, SparseArrays
 input = rand(10)
 output = similar(input)
@@ -109,37 +124,105 @@ FiniteDiff.finite_difference_jacobian!(jac, f, rand(30), colorvec=colors)
 @show fcalls # 5
 forwarddiff_color_jacobian!(jac, f, x, colorvec = colors)
 
-     #https://github.com/JuliaStats/StatsFuns.jl/tree/an/nopdf
-## Modeling Toolkit
-using ModelingToolkit, GalacticOptim, Optim
-C = 2N+1 # number of constraints in _c(z,p)
-c_quad(z::Symbolics.Arr{Num},p::Symbolics.Arr{Num})=dot(z,Symbolics.scalarize(H*z))
+
+
+## Modeling Toolkit      #https://github.com/JuliaStats/StatsFuns.jl/tree/an/nopdf
+
+module NonLinProbPrecompile
+    using ModelingToolkit, LinearAlgebra
+
+    function system(; kwargs...)
+        # Define some variables
+        M = 50;P=3031;x0=ones(M)/10;
+    
+        @variables z[1:M]
+        @parameters p[1:P]
+        zcat = vcat(z...);
+        pcat = vcat(p...);
+        # Define a system of nonlinear equations
+        ceq = vcat(
+            0 .~ c_lin(zcat,pcat),
+            0  ~ c_quad(zcat,pcat) ,
+            0 .~ c_p(zcat,pcat,x0)
+          )
+        ns = NonlinearSystem(ceq,z,p)
+        return generate_function(ns,z,p)
+    end
+    # Setting eval_expression=false and eval_module=[this module] will ensure
+    # the RGFs are put into our own cache, initialised below.
+    using RuntimeGeneratedFunctions
+    RuntimeGeneratedFunctions.init(@__MODULE__)
+    const f_noeval_good = system(; eval_expression=false, eval_module=@__MODULE__)
+end
+
+f = eval(Main.NonLinProbPrecompile.f_noeval_good[1])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function c_quad(z::Symbolics.Arr{Num},p::Symbolics.Arr{Num})
+    H  = reshape(p[6N+2+2N*M:6N+1+2N*M+M^2],M,M)
+    return dot(z,Symbolics.scalarize(H*z)) #transpose(z)*H*z
+end
 
 @variables z[1:M]
 @parameters p[1:P]
-loss = vcat(c_lin(z,p),c_quad(z,p),Symbolics.scalarize(c_p(z,p,x0)))
-sys = OptimizationSystem(loss,Symbolics.scalarize(vcat(x...,y...,A...)),σ)
+zcat = vcat(z...);
+pcat = vcat(p...);
 
-x0 = [1.0,1.0]
-y0 = [1.0,1.0,1.0]
-A0 = ones(3,3)
-u0 = [
-    Symbolics.scalarize(x .=> x0)...,
-    Symbolics.scalarize(y .=> y0)...,
-    Symbolics.scalarize(A .=> A0)...  
-]
-p_dense
-p = [
-    σ[1] => 6.0
-    σ[2] => 6.0
-]
+ceq = vcat(
+        0 .~ c_lin(zcat,pcat),
+        0  ~ c_quad(zcat,pcat) ,
+        0 .~ c_p(zcat,pcat,x0)
+      )
 
-prob = OptimizationProblem(sys,u0,p,grad=true,hess=true)
-solve(prob,Newton())
+loss = Symbolics.scalarize(Symbolics.scalarize(sum(selp*zcat)) + Symbolics.scalarize(sum(Symbolics.scalarize(selc*zcat).*x0)) )
+sys = OptimizationSystem(loss,z,p; equality_constraints=ceq)
+u0 = zcat .=> z0
+p0 = pcat .=> p_dense
+prob = OptimizationProblem(sys,u0,p0,grad=true,hess=true)  #
+sol = solve(prob,IPNewton())
 
-calculate_gradient(sys)
+#@test ModelingToolkit.varmap_to_vars(u0,states(ns); defaults=ModelingToolkit.defaults(ns))==z0
+
+ns = NonlinearSystem(ceq,z,p)
+prob_ns = NonlinearProblem(ns,z0,p_dense; check_length=false)#check_length=false
+sol_ns = solve(prob_ns,NewtonRaphson())
+
+@variables z[1:2]
+@parameters p[1:2]
+ceq = [0 ~ z[1],0 ~ Symbolics.scalarize(cl[1])]
+ns = NonlinearSystem(ceq,z,p)
+z00=[2.2,2.3]
+p00=[2.2,2.3]
+prob_ns = NonlinearProblem(ns,z00,p00)
+sol_ns = solve(prob_ns,NewtonRaphson())
+
+
+
+
+nlsys_func = generate_function(ns, [x,y,z], [σ,ρ,β])
+jac_func = generate_jacobian(ns)
+f = @eval eval(nlsys_func)
+Symbolics.jacobian(equations(ns),states(ns))
+calculate_jacobian(ns)
+f = eval(generate_function(ns, [x,y,z], [σ,ρ,β])[2])
 cJ=generate_gradient(sys; parallel=Symbolics.MultithreadedForm())
-
+nlsys_func = generate_function(ns, [x,y,z], [σ,ρ,β])
+jac_func = generate_jacobian(ns)
+f = @eval eval(nlsys_func)
 calculate_hessian
 
 generate_hessian
@@ -154,7 +237,22 @@ hessian_sparsity
 Joop(map(x->x[2],u0),map(x->x[2],p))
 calculate_gradient(sys)
 
+# define derivatives
+f(x) = 2x + x^2
+@register f(x)
+function ModelingToolkit.derivative(::typeof(f), args::NTuple{1,Any}, ::Val{1})
+    2 + 2args[1]
+end
+expand_derivatives(Dx(f(x)))
 
+beta_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x)
+function c_chance(z,p)
+    c, α, β = selc*z, selα*z, selβ*z
+    w, delta = p[1:N], p[2N+1:3N]
+    zeroz = zero(z[1])+0.0001
+    onez = one(z[1])-0.0001
+    return beta_ccdf.(α,β,max.(min.(w./c,onez),zeroz) ) .- delta
+end
 
 ## JuMP
 using JuMP, Ipopt
