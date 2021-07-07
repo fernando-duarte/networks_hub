@@ -1,21 +1,68 @@
 include("NU2_preamble.jl")
 
-prob_ns = eval(f_noeval_good[1])
-
-
+f = eval(NonLinProbPrecompile.f_noeval_good[1])
 @variables z[1:M]
 @parameters p[1:P]
-zcat = vcat(z...);
-pcat = vcat(p...);
-s_ceq = 0 .~ ceq(zcat,pcat)
-#ceq0 = ceq(z0,p_dense) # super slow
+f_expr = f(z,p)
+eq = 0 .~ f(z,p)
+p0 = p_dense
+# ns = NonlinearSystem(eq,z,p; name=:random_name, defaults=merge(Dict(vcat(z) .=> z0),Dict(vcat(p) .=> p0)) ) 
+ns = NonlinearSystem(eq,z,p)
+# prob_ns = NonlinearProblem(ns,z0,p0; check_length=false,jac = true, sparse=true,checkbounds = false, linenumbers = false) 
+prob_ns = NonlinearProblem(ns,z0,p0; check_length=false)
+# NonlinearFunction(ns,z0,p0)
+@show states(ns);
+@show parameters(ns);
 
-ns = NonlinearSystem(s_ceq,z,p)
-prob_ns = NonlinearProblem(ns,z0,p_dense; check_length=false) #check_length=false
-sol_ns = solve(prob_ns,NewtonRaphson())
-clin(sol_ns.u,p_dense)
-c_quad(sol_ns.u,p_dense)
-c_p(sol_ns.u,p_dense, x0)
+
+sys_num = generate_function(ns) 
+sys_sym = generate_function(ns,z,p) 
+jac_num = generate_jacobian(ns)
+jac_sym = generate_jacobian(ns,z,p) 
+jac_sym_sp = Symbolics.sparsejacobian(f(z,p),states(ns))
+hess_sym = ModelingToolkit.hessian(f(z,p)[1],states(ns); simplify=true) # hessian of 1st equation in f
+hess_num = build_function(hess_sym, states(ns); expression = false, target = Symbolics.JuliaTarget())
+
+sn = @eval eval(sys_num[1])
+sn_iip = @eval eval(sys_num[2])
+ss = @eval eval(sys_sym[1])
+
+jn = @eval eval(jac_num[1])
+jn_iip = @eval eval(jac_num[2])
+js = @eval eval(jac_sym[1])
+js_sp = jac_sym_sp
+
+hn = @eval eval(hess_num[1])
+hn_iip = @eval eval(hess_num[2])
+hs = @eval eval(hess_sym)
+
+
+
+@show sn(z0,p0)
+@show ss(z,p)
+@show jn(z0,p0)
+@show js(z,p)
+@show js_sp
+@show hn(z0,p0)
+@show hs
+
+sn_z0 = zeros(length(z0)) 
+jn_z0 = zeros(length(eq),length(z0)) 
+hn_z0 = zeros(length(z0),length(z0)) 
+@show sn_iip(sn_z0,z0,p0)
+@show jn_iip(jn_z0,z0,p0)
+@show hn_iip(hn_z0,z0,p0)
+
+@show sn_z0
+@show jn_z0
+@show hn_z0
+
+Base.show(io::IO,::MIME"text/html",x::Num) = show(io,MIME("text/latex"),x)
+inner_optimizer = GradientDescent()
+results = optimize((x)->sn(x,p0), low, upp, (upp-low)/2+low, Fminbox(inner_optimizer), autodiff = :forward)
+
+nlsolve((F,x)->sn_iip(F,x,p0), z0, autodiff = :forward)
+nlsolve((F,x)->sn_iip(F,x,p0), (F,x)->jn_iip(F,x,p0), z0)
 
 
 ######################################
