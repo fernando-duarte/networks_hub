@@ -1,15 +1,185 @@
 include("NU2_preamble.jl")
 
 f = eval(NonLinProbPrecompile.f_noeval_good[1])
+f_num = eval(NonLinProbPrecompileNum.f_noeval_num[1])
+f_obj = eval(NonLinProbPrecompileObj.f_noeval_obj)
 @variables z[1:M]
-@parameters p[1:P]
-f_expr = f(z,p)
-eq = 0 .~ f(z,p)
-p0 = p_dense
+p=[]
+obj_expr = f_obj(z,p)
+f_expr = f_num(z,p)
+Q = length(f_expr) # number of constraints
+eq = 0 .~ f_expr
+ns = NonlinearSystem(eq,z,p)
+os = OptimizationSystem(obj_expr,z,[])
+
+obj_num = generate_function(os)
+grad_num = generate_gradient(os)
+sys_num = generate_function(ns) 
+jac_num = generate_jacobian(ns, sparse=true)
+jac_sym = generate_jacobian(ns,z,p)
+hess_obj_num = generate_hessian(os, sparse=true)
+hess_obj_sym = calculate_hessian(os)
+hess_sym(i) = Symbolics.sparsehessian(f_expr[i],Symbolics.scalarize(z))
+
+on = @eval eval(obj_num)
+gn = @eval eval(grad_num[1])
+gn_iip = @eval eval(grad_num[2])
+sn = @eval eval(sys_num[1])
+sn_iip = @eval eval(sys_num[2])
+jn = @eval eval(jac_num[1])
+js_iip = @eval eval(jac_sym[2])
+p0=Float64[];
+@show on(z0,p0)
+@show gn(z0,p0)
+@show sn(z0,p0)
+@show jn(z0,p0)
+
+gn_z0 = zeros(length(z0)) 
+sn_z0 = zeros(length(eq)) 
+jn_z0 = spzeros(length(eq),length(z0)) 
+@show gn_iip(gn_z0,z0,p0)
+@show sn_iip(sn_z0,z0,p0)
+@show js_iip(jn_z0,z0,p0)
+
+@show gn_z0
+@show sn_z0
+@show jn_z0
+
+@show jac_sp = ModelingToolkit.jacobian_sparsity(ns);
+@show jac_sp.colptr;
+@show jac_sp.rowval;
+
+# sparsity pattern of the Lagrangian's hessian
+for i=1:Q
+   @eval @parameters ($(Symbol("lambda$i"))) 
+end
+λvec = [ @eval ($(Symbol("lambda$i"))) for i=1:Q]
+@parameters σ
+
+lag =  σ * obj_expr + dot(f_expr,λvec) 
+temp_sp = OptimizationSystem(lag,z,vcat(λvec...,σ))
+hess_sp = ModelingToolkit.hessian_sparsity(temp_sp)
+rows_hess_sp = hess_sp.rowval
+cols_hess_sp = vcat([fill(j,length(nzrange(hess_sp,j))) for j=1:M]...)
+@test sparse(rows_hess_sp,cols_hess_sp,true,M,M)==hess_sp
+
+@parameters λ[1:Q] σ
+λcat = vcat(λ...)
+hess_λ = σ * hess_obj_sym + sum(λ[i]*hess_sym(i) for i=1:Q) 
+hess_num = build_function(hess_λ,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
+hess_oop = @eval eval(hess_num[1])
+hess_iip = @eval eval(hess_num[2])
+hess_z0 = spzeros(length(z0),length(z0)) 
+λ0 = ones(Q)
+σ0 = 1.0
+hess_oop(z0,λ0,σ0)
+hess_iip(hess_z0,z0,λ0,σ0)
+
+hess_σ = σ * hess_obj_sym
+hess_σ_num = build_function(hess_σ,z,σ)
+hess_σ_oop = @eval eval(hess_σ_num[1])
+hess_σ_iip = @eval eval(hess_σ_num[2])
+hess_σ_z0 = spzeros(length(z0),length(z0)) 
+σ0 = 1.0
+hess_σ_oop(z0,σ0)
+hess_σ_iip(hess_σ_z0,z0,σ0)
+@show hess_σ_z0
+
+
+hess_σ[hess_sp]
+
+
+fun(z) =  0.0
+function fun_grad!(g, x)
+    g .= zeros(length(x))
+end
+function fun_hess!(h, x)
+    h .= zeros(length(x),length(x))
+end
+df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z0)
+
+con_c!(c, x) = sn_iip(c,x,[])
+function con_jacobian!(J, x)
+    js_iip(J, x,[])
+    return J
+end
+
+
+function con_h!(h, x, λ)
+   sn_iip(h, x, λ)
+   return h
+end
+
+z00= low + (upp-low)/2
+df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z00)
+lc = spzeros(Q)
+uc = spzeros(Q)
+dfc = TwiceDifferentiableConstraints(con_c!, con_jacobian!, con_h!,low,upp, lc, uc)
+
+res = optimize(df, dfc, z00, IPNewton(show_linesearch = true), 
+    Optim.Options(
+                    g_tol = 1e-12,
+                    x_tol = 1e-12,
+                    f_tol = 1e-12,
+                    allow_f_increases = true,
+                    successive_f_tol = 5,
+                    show_trace = true,
+                    iterations=100
+                  )
+                )
+
+zsol = res.minimizer;
+c_quad(zsol,p_dense)
+c_lin(zsol,p_dense)
+c_p(zsol,p_dense,x0)
+
+
+z00=low + (upp-low)/2
+sol_NM = optimize(fun, z0, NelderMead())
+sol_LBFGS = optimize(fun, z0, LBFGS())
+sol_LBFGSad =optimize(fun, z0, LBFGS(); autodiff = :forward)
+sol_SAMIN =optimize(fun, low,upp,z00, SAMIN())
+
+
+df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z00)
+dfc = TwiceDifferentiableConstraints(low, upp)
+
+res = optimize(df, dfc, z00, IPNewton(), 
+    Optim.Options(
+                    g_tol = 1e-12
+                  )
+                )
+
+
+#######################NLPModelsIpopt.jl###################################
+
+using ADNLPModels, NLPModels, NLPModelsIpopt
+
+
+nlp = ADNLPModel(fun,z00,low,upp,con_c!, lc, uc)
+fx = obj(nlp, nlp.meta.x0)
+gx = grad(nlp, nlp.meta.x0)
+Hx = hess(nlp, nlp.meta.x0)
+
+##########################################################
+
+
+include("NU2_preamble.jl")
+
+f = eval(NonLinProbPrecompile.f_noeval_good[1])
+f_num = eval(NonLinProbPrecompileNum.f_noeval_num[1])
+@variables z[1:M]
+# @parameters p[1:P]
+# f_expr = f(z,p)
+# eq = 0 .~ f(z,p)
+p=[]
+f_expr = f_num(z,p)
+eq = 0 .~ f_expr
+#p0 = p_dense
 # ns = NonlinearSystem(eq,z,p; name=:random_name, defaults=merge(Dict(vcat(z) .=> z0),Dict(vcat(p) .=> p0)) ) 
 ns = NonlinearSystem(eq,z,p)
 # prob_ns = NonlinearProblem(ns,z0,p0; check_length=false,jac = true, sparse=true,checkbounds = false, linenumbers = false) 
-prob_ns = NonlinearProblem(ns,z0,p0; check_length=false)
+#prob_ns = NonlinearProblem(ns,z0,p0; check_length=false)
 # NonlinearFunction(ns,z0,p0)
 @show states(ns);
 @show parameters(ns);
@@ -17,11 +187,17 @@ prob_ns = NonlinearProblem(ns,z0,p0; check_length=false)
 
 sys_num = generate_function(ns) 
 sys_sym = generate_function(ns,z,p) 
-jac_num = generate_jacobian(ns)
+jac_num = generate_jacobian(ns, sparse=true, skipzeros=false)
 jac_sym = generate_jacobian(ns,z,p) 
-jac_sym_sp = Symbolics.sparsejacobian(f(z,p),states(ns))
-hess_sym = ModelingToolkit.hessian(f(z,p)[1],states(ns); simplify=true) # hessian of 1st equation in f
+jac_sym_sp = Symbolics.sparsejacobian(f_expr,states(ns))
+hess_sym = ModelingToolkit.hessian(f_expr[1],states(ns); simplify=true) # hessian of 1st equation in f_expr
 hess_num = build_function(hess_sym, states(ns); expression = false, target = Symbolics.JuliaTarget())
+
+Q = 2N+1+N*mini_batch #number of constraints
+@variables λ[1:Q]
+[λ[i]*ModelingToolkit.hessian(f_expr[i],states(ns); simplify=true) for i=1:Q]
+
+hv_sym = 
 
 sn = @eval eval(sys_num[1])
 sn_iip = @eval eval(sys_num[2])
@@ -30,6 +206,7 @@ ss = @eval eval(sys_sym[1])
 jn = @eval eval(jac_num[1])
 jn_iip = @eval eval(jac_num[2])
 js = @eval eval(jac_sym[1])
+js_iip = @eval eval(jac_sym[2])
 js_sp = jac_sym_sp
 
 hn = @eval eval(hess_num[1])
@@ -37,7 +214,7 @@ hn_iip = @eval eval(hess_num[2])
 hs = @eval eval(hess_sym)
 
 
-
+p0=Float64[];
 @show sn(z0,p0)
 @show ss(z,p)
 @show jn(z0,p0)
@@ -46,9 +223,9 @@ hs = @eval eval(hess_sym)
 @show hn(z0,p0)
 @show hs
 
-sn_z0 = zeros(length(z0)) 
-jn_z0 = zeros(length(eq),length(z0)) 
-hn_z0 = zeros(length(z0),length(z0)) 
+sn_z0 = zeros(length(eq)) 
+jn_z0 = spzeros(length(eq),length(z0)) 
+hn_z0 = spzeros(length(z0),length(z0)) 
 @show sn_iip(sn_z0,z0,p0)
 @show jn_iip(jn_z0,z0,p0)
 @show hn_iip(hn_z0,z0,p0)
@@ -57,7 +234,35 @@ hn_z0 = zeros(length(z0),length(z0))
 @show jn_z0
 @show hn_z0
 
-Base.show(io::IO,::MIME"text/html",x::Num) = show(io,MIME("text/latex"),x)
+
+fun(z) =  0.0
+function fun_grad!(g, x)
+    g .= zeros(length(x))
+end
+function fun_hess!(h, x)
+    h .= zeros(length(x),length(x))
+end
+df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z0)
+
+con_c!(c, x) = sn_iip(c,x,[])
+function con_jacobian!(J, x)
+    jn_iip(J, x,[])
+    return J
+end
+function con_h!(h, x, λ)
+    h[1,1] += λ[1]*2
+    h[2,2] += λ[1]*2
+end;
+
+
+
+f_optim(z) = sn(z,p0)
+optimize(f_optim, z0, NelderMead())
+optimize(f_optim, z0, LBFGS())
+optimize(f_optim, z0, LBFGS(); autodiff = :forward)
+g!(G, x) = 
+
+
 inner_optimizer = GradientDescent()
 results = optimize((x)->sn(x,p0), low, upp, (upp-low)/2+low, Fminbox(inner_optimizer), autodiff = :forward)
 

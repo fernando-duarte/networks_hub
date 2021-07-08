@@ -20,12 +20,12 @@
 import Pkg; Pkg.activate("optim"); Pkg.instantiate()
 #Pkg.resolve();Pkg.gc();Pkg.precompile();
 using BSON, DataFrames, LinearAlgebra, SparseArrays, Parameters, Statistics, NLsolve, Quadrature, Cuba,  DistributionsAD, SpecialFunctions, BlockArrays, Revise, Test
-using ModelingToolkit, GalacticOptim, Optim, NonlinearSolve
+using ModelingToolkit, GalacticOptim, Optim, NonlinearSolve, Symbolics
 import Distributions
 include("NetworkType.jl"); using .NetworkType
 #include("IncBetaDer.jl"); #using .IncBetaDer
 include("NetDefs.jl"); using .NetDefs
-include("NonLinProbPrecompile.jl"); using .NonLinProbPrecompile
+include("NonLinProbPrecompile.jl"); using .NonLinProbPrecompile; using .NonLinProbPrecompileObj; using .NonLinProbPrecompileNum
 
 
 

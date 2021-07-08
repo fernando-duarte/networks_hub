@@ -1805,9 +1805,9 @@ version = "0.13.0"
 
 [[Symbolics]]
 deps = ["ConstructionBase", "DiffRules", "Distributions", "DocStringExtensions", "DomainSets", "IfElse", "Latexify", "Libdl", "LinearAlgebra", "MacroTools", "NaNMath", "RecipesBase", "Reexport", "Requires", "RuntimeGeneratedFunctions", "SciMLBase", "Setfield", "SparseArrays", "SpecialFunctions", "StaticArrays", "SymbolicUtils", "TreeViews"]
-git-tree-sha1 = "713685972c3991b23a430fea59e32136140f2528"
+path = "/home/ec2-user/.julia/dev/Symbolics"
 uuid = "0c5d862f-8b57-4792-8d23-62f2024744c7"
-version = "1.2.2"
+version = "1.2.3"
 
 [[TOML]]
 deps = ["Dates"]
