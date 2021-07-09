@@ -157,7 +157,7 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 300 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
+Flux.@epochs 10 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
 
 ## Testing
 @testset "Neural Net Check" begin
