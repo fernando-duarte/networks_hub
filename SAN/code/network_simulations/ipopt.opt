@@ -1,0 +1,7 @@
+print_user_options yes
+file_print_level 5
+print_level 0
+max_iter 10000
+mu_strategy adaptive
+derivative_test second-order
+hessian_approximation exact

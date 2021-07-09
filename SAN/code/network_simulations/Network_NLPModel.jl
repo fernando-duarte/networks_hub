@@ -1,24 +1,35 @@
-include("NU2_preamble.jl")
+#include("NU2_preamble.jl")
 
-module NetworkModel
+# module NetworkModel
 
-export NetNLP
+using NLPModels
 
-mutable struct NetNLP <: AbstractNLPModel
-  p  #parameters
-  meta::NLPModelMeta
-  counters :: Counters 
+# export NetNLP
+
+mutable struct NetNLP <: AbstractNLPModel{Float64, Vector{Float64}}
+    z0::AbstractVector
+    low::AbstractVector
+    upp::AbstractVector
+    Q::Integer
+    jac_sp::AbstractMatrix
+    hess_sp::AbstractMatrix
+    N::Integer
+    minimize::Bool
+    name::String
+    p::Vector                      #parameters
+    meta::NLPModelMeta
+    counters::Counters 
 end
 
-show_header(io::IO, nlp::NetNLP) = println(io, "NetNLP - Network model")
+# show_header(io::IO, nlp::NetNLP) = println(io, "NetNLP - Network model")
 
-function Base.show(io::IO, nlp::NetNLP)
-  show_header(io, nlp)
-  show(io, nlp.meta)
-  show(io, nlp.inner.counters)
-end
+# function Base.show(io::IO, nlp::NetNLP)
+#   show_header(io, nlp)
+#   show(io, nlp.meta)
+#   show(io, nlp.counters)
+# end
 
-function NetNLP(p)
+function NetNLP(z0,low,upp,Q,jac_sp,hess_sp,N; minimize = true,name = "Network Optimization",p=[])
   meta = NLPModelMeta(M; 
             x0 = z0,
             lvar = low,
@@ -34,28 +45,26 @@ function NetNLP(p)
             nwv = 0,
             ncon = Q,
 #             y0: initial Lagrange multipliers
-            lcon = zeros(ncon),
-            ucon = zeros(ncon),
+            lcon = zeros(Q),#zeros(ncon),
+            ucon = zeros(Q),#zeros(ncon),
             #nnzo: number of nonzeros in all objectives gradients
             nnzj= nnz(jac_sp),
             nnzh = nnz(hess_sp),
             nlin = 2N,
-            nnln = ncon-nlin,
+            nnln = Q-2N,#ncon-nlin,
             nnnet = 0,
             nlnet = 0,
-            lin = 1:nlin,
-            nln = nlin+1:nlin+ncon,
+            lin = 1:2N,#1:nlin,
+            nln = setdiff(1:Q,1:2N),#setdiff(1:ncon,1:nlin),
 #             nnet: indices of nonlinear network constraints
 #             lnet: indices of linear network constraints
-            minimize = true,
+            minimize = minimize,
             nlo = 1,
             islp = false,
-            name = "Network Optimization"
+            name = name
                 )
-  return NetNLP(p, meta, Counters())
+  return NetNLP(z0,low,upp,Q,jac_sp,hess_sp,N,minimize,name,p,meta,Counters())
 end
-
-@default_counters NetNLP inner
 
 function NLPModels.obj(nlp::NetNLP, z::AbstractVector)
   return on(z,nlp.p)
@@ -64,6 +73,30 @@ end
 function NLPModels.grad!(nlp::NetNLP, z::AbstractVector, g::AbstractVector)
   gn_iip(g,z,nlp.p)
   return g
+end
+
+function NLPModels.cons!(nlp::NetNLP, z::AbstractVector, c::AbstractVector)
+  sn_iip(c,z,nlp.p)
+  return c
+end
+
+function NLPModels.jac_coord!(
+  nlp::NetNLP,
+  z::AbstractVector,
+  vals::AbstractVector
+)
+  jac_nzval_iip(vals,z)
+  return vals
+end
+
+function NLPModels.jac_structure!(
+  nlp::NetNLP,
+  rows::AbstractVector{<:Integer},
+  cols::AbstractVector{<:Integer},
+)
+  rows .= rows_jac_sp
+  cols .= cols_jac_sp
+  return rows, cols
 end
 
 function NLPModels.hess_structure!(
@@ -86,16 +119,27 @@ function NLPModels.hess_coord!(
   return vals
 end
 
+function NLPModels.hess_coord!(
+  nlp::NetNLP,
+  z::AbstractVector,
+  λ::AbstractVector,
+  vals::AbstractVector;
+  obj_weight::Real = 1.0,
+)
+  hess_λ_nzval_iip(vals,z,λ,obj_weight)
+  return vals
+end
+
 function NLPModels.hprod!(
   nlp::NetNLP,
   z::AbstractVector,
+  λ::AbstractVector,
   v::AbstractVector,
   Hv::AbstractVector;
   obj_weight::Real = 1.0,
 )
-  hprod!(nlp.inner, x, v, Hv, obj_weight = obj_weight)
-  Hv .+= nlp.ρ * obj_weight * v
+  Hv_iip(Hv,z,λ,v,obj_weight)
   return Hv
 end
 
-end # module
+# end # module
