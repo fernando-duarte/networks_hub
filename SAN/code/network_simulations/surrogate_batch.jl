@@ -8,7 +8,7 @@ using Flux.Data: DataLoader
 using IterTools: ncycle
 using Flux: throttle
 using ForwardDiff
-using Convex, SCS, MathOptInterface, Parameters, Suppressor, Revise
+using Convex, SCS, MathOptInterface, Parameters, Suppressor
 using Dates, MonthlyDates
 const MOI = MathOptInterface
 using BSON
@@ -21,6 +21,7 @@ T=Float32
 #N = 5 #number of ndoes
 N = parse(Int64, ARGS[1])  #number of nodes from bach
 Q = 200000 #number of samples - size(train) = Q/2 size(test) = Q/2
+epochs = 20 #number of training iterations
 max_iter = 2*Q
 dates=[Date(QuarterlyDate("2008-Q4"))]
 
@@ -169,7 +170,7 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 1500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+Flux.@epochs epochs Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 
 model = cpu(model)
 @save "clearing_p_NN_gpu_N$N.bson" model
