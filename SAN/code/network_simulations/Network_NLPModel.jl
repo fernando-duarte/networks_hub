@@ -12,11 +12,15 @@ mutable struct NetNLP <: AbstractNLPModel{Float64, Vector{Float64}}
     upp::AbstractVector
     Q::Integer
     jac_sp::AbstractMatrix
+    rows_jac_sp::AbstractVector
+    cols_jac_sp::AbstractVector
     hess_sp::AbstractMatrix
+    rows_hess_sp::AbstractVector
+    cols_hess_sp::AbstractVector
     N::Integer
     minimize::Bool
     name::String
-    p::Vector                      #parameters
+    p::AbstractVector                      #parameters
     meta::NLPModelMeta
     counters::Counters 
 end
@@ -29,7 +33,7 @@ end
 #   show(io, nlp.counters)
 # end
 
-function NetNLP(z0,low,upp,Q,jac_sp,hess_sp,N; minimize = true,name = "Network Optimization",p=[])
+function NetNLP(z0,low,upp,Q,jac_sp,rows_jac_sp,cols_jac_sp,hess_sp,rows_hess_sp,cols_hess_sp,N; minimize = true,name = "Network Optimization",p=[])
   meta = NLPModelMeta(M; 
             x0 = z0,
             lvar = low,
@@ -63,7 +67,7 @@ function NetNLP(z0,low,upp,Q,jac_sp,hess_sp,N; minimize = true,name = "Network O
             islp = false,
             name = name
                 )
-  return NetNLP(z0,low,upp,Q,jac_sp,hess_sp,N,minimize,name,p,meta,Counters())
+  return NetNLP(z0,low,upp,Q,jac_sp,rows_jac_sp,cols_jac_sp,hess_sp,rows_hess_sp,cols_hess_sp, N,minimize,name,p,meta,Counters())
 end
 
 function NLPModels.obj(nlp::NetNLP, z::AbstractVector)
@@ -94,8 +98,8 @@ function NLPModels.jac_structure!(
   rows::AbstractVector{<:Integer},
   cols::AbstractVector{<:Integer},
 )
-  rows .= rows_jac_sp
-  cols .= cols_jac_sp
+  rows .= nlp.rows_jac_sp
+  cols .= nlp.cols_jac_sp
   return rows, cols
 end
 
@@ -104,8 +108,8 @@ function NLPModels.hess_structure!(
   rows::AbstractVector{<:Integer},
   cols::AbstractVector{<:Integer},
 )
-  rows .= rows_hess_sp
-  cols .= cols_hess_sp
+  rows .= nlp.rows_hess_sp
+  cols .= nlp.cols_hess_sp
   return rows, cols
 end
 
@@ -115,7 +119,7 @@ function NLPModels.hess_coord!(
   vals::AbstractVector;
   obj_weight::Real = 1.0,
 )
-  hess_σ_iip(vals,z,obj_weight)
+  hess_σ_nzval_iip(vals,z,obj_weight)
   return vals
 end
 

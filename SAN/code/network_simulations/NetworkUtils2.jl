@@ -40,7 +40,6 @@ jn_z0 = spzeros(length(eq),length(z0))
 @show gn_iip(gn_z0,z0,p0)
 @show sn_iip(sn_z0,z0,p0)
 @show js_iip(jn_z0,z0,p0)
-
 @show gn_z0
 @show sn_z0
 @show jn_z0
@@ -79,7 +78,9 @@ cols_hess_sp_full = vcat([fill(j,length(nzrange(hess_sp,j))) for j=1:M]...)
 hess_sp_lt = sparse(LowerTriangular(Array(hess_sp)))
 rows_hess_sp = hess_sp_lt.rowval
 cols_hess_sp = vcat([fill(j,length(nzrange(hess_sp_lt,j))) for j=1:M]...)
+@test Symmetric(sparse(rows_hess_sp,cols_hess_sp,true,M,M),:L)==hess_sp
 
+##
 @parameters λ[1:Q] σ
 λcat = vcat(λ...)
 hess_λ = σ * hess_obj_sym + sum(λ[i]*hess_sym(i) for i=1:Q) 
@@ -91,6 +92,19 @@ hess_z0 = spzeros(length(z0),length(z0))
 σ0 = 1.0
 hess_oop(z0,λ0,σ0)
 hess_iip(hess_z0,z0,λ0,σ0)
+@show hess_z0
+##
+
+hess_λ_nzval = hess_λ[hess_sp_lt]
+hess_λ_nzval_num = build_function(hess_λ_nzval,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
+hess_λ_nzval_oop = @eval eval(hess_λ_nzval_num[1])
+hess_λ_nzval_iip = @eval eval(hess_λ_nzval_num[2])
+hess_λ_nzval0 = spzeros(nnz(hess_sp_lt)) 
+λ0 = ones(Q)
+σ0 = 1.0
+hess_λ_nzval_oop(z0,λ0,σ0)
+hess_λ_nzval_iip(hess_λ_nzval0,z0,λ0,σ0)
+@show hess_λ_nzval0
 
 hess_σ = σ * hess_obj_sym
 hess_σ_num = build_function(hess_σ,z,σ)
@@ -112,17 +126,6 @@ hess_σ_nzval_oop(z0,σ0)
 hess_σ_nzval_iip(hess_σ_nzval0,z0,σ0)
 @show hess_σ_nzval0
 
-hess_λ_nzval = hess_λ[hess_sp_lt]
-hess_λ_nzval_num = build_function(hess_λ_nzval,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
-hess_λ_nzval_oop = @eval eval(hess_λ_nzval_num[1])
-hess_λ_nzval_iip = @eval eval(hess_λ_nzval_num[2])
-hess_λ_nzval0 = spzeros(nnz(hess_sp_lt)) 
-λ0 = ones(Q)
-σ0 = 1.0
-hess_λ_nzval_oop(z0,λ0,σ0)
-hess_λ_nzval_iip(hess_λ_nzval0,z0,λ0,σ0)
-@show hess_σ_nzval0
-
 @parameters v[1:M]
 v_cat = vcat(v...)
 Hv_sym = hess_λ*v_cat
@@ -136,20 +139,23 @@ Hv_iip(Hv0,z0,λ0,v0,σ0)
 @show Hv0
 @test Array(Hv0)==Hv_oop(z0,λ0,v0,σ0)
 
+
+lagrangian_sym = σ * obj_expr + sum(λ[i]*f_expr[i] for i=1:Q) 
+lagrangian_num = build_function(lagrangian_sym,z,λ,σ) 
+lagrangian_oop = @eval eval(lagrangian_num)
+lagrangian0 = 0.0
+lagrangian_oop(z0,λ0,σ0)
+
+
 ############################
 include("Network_NLPModel.jl")
 using  NLPModelsIpopt
 
-nlp = NetNLP(z0,low,upp,Q,jac_sp,hess_sp,N; minimize = true,name = "Network Optimization",p=[])
-stats = ipopt(nlp,output_file="ipopt_out.txt")
+nlp = NetNLP(z0,low,upp,Q,jac_sp,rows_jac_sp,cols_jac_sp,hess_sp_lt,rows_hess_sp,cols_hess_sp,N; minimize = true,name = "Network Optimization",p=[])
 
-                           
-################ tests ###############
-using ForwardDiff, Zygote, FiniteDiff
-c_vals = zeros(Q)
-hess_vals = zeros(nnz(hess_sp_lt))
-jac_vals = zeros(nnz(jac_sp));jac_rows=zeros(Int,nnz(jac_sp));jac_cols=similar(jac_rows)
-hess_vals = zeros(nnz(hess_sp_lt));hess_rows=zeros(Int,nnz(hess_sp_lt));hess_cols=similar(hess_rows)
+stats = ipopt(nlp,output_file="ipopt_out.txt")
+print(stats)
+
 
 function __c(z,p,x)
     vcat(
@@ -158,6 +164,20 @@ function __c(z,p,x)
         c_p(z,p,x)
         )
 end
+
+tol = 1e-6
+@test all(isapprox.(__c(stats.solution,p_dense,x0),0,atol=tol))         
+@test all(low .<= stats.solution .<= upp)
+
+reshape(stats.solution[1:N^2],N,N)
+
+################ tests ###############
+using ForwardDiff, Zygote, FiniteDiff
+c_vals = zeros(Q)
+hess_vals = zeros(nnz(hess_sp_lt))
+jac_vals = zeros(nnz(jac_sp));jac_rows=zeros(Int,nnz(jac_sp));jac_cols=similar(jac_rows)
+hess_vals = zeros(nnz(hess_sp_lt));hess_rows=zeros(Int,nnz(hess_sp_lt));hess_cols=similar(hess_rows)
+
 
 p0 = p_dense
 @test NetDefs.obj(z0,p0)==NLPModels.obj(nlp,z0)
@@ -175,44 +195,46 @@ jac3 = FiniteDiff.finite_difference_jacobian(z->__c(z,p0,x0),z0)
 
 
 rr_h, cc_h = NLPModels.hess_structure!(nlp,hess_rows,hess_cols)
-
-hess_σ_iip(vals,z,obj_weight)
 vv_h = NLPModels.hess_coord!(nlp,z0,hess_vals;obj_weight=1)
-hess1 = Array(sparse(rr_h,cc_h,vv_h))
-hess2 = Array(sparse(hess_rows,hess_cols,hess_vals))
+hess1 = Array(Symmetric(sparse(rr_h,cc_h,vv_h,M,M),:L))
+hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,M,M),:L))
 hess3 = FiniteDiff.finite_difference_hessian(z->NLPModels.obj(nlp,z),z0)
 hess4 = FiniteDiff.finite_difference_hessian(z->NetDefs.obj(z,p0),z0)
-@test hess1 ≈ hess2 ≈ hess3 ≈ hess4
+pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>0.0,σ=>1.0)))
+hess5 = Symbolics.value.(map(x->substitute(x,pmap),hess_σ))
 
-
-
-pnew = varmap_to_vars([β=>3.0, c=>10.0, γ=>2.0],parameters(sys))
-
-
-
-
-
-
-fun(z) =  0.0
-function fun_grad!(g, x)
-    g .= zeros(length(x))
-end
-function fun_hess!(h, x)
-    h .= zeros(length(x),length(x))
-end
-df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z0)
-
-con_c!(c, x) = sn_iip(c,x,[])
-function con_jacobian!(J, x)
-    js_iip(J, x,[])
-    return J
+@testset "Obj Hessian" begin
+    @test all(isapprox.(hess1,hess2,atol=tol))
+    @test all(isapprox.(hess1,hess3,atol=tol))
+    @test all(isapprox.(hess1,hess4,atol=tol))
+    @test all(isapprox.(hess1,hess5,atol=tol))
+    @test all(isapprox.(hess2,hess3,atol=tol))
+    @test all(isapprox.(hess2,hess4,atol=tol))
+    @test all(isapprox.(hess2,hess5,atol=tol))
+    @test all(isapprox.(hess3,hess4,atol=tol))
+    @test all(isapprox.(hess3,hess5,atol=tol))
+    @test all(isapprox.(hess4,hess5,atol=tol))
 end
 
+lambda0 = ones(Q)
+vv_h = NLPModels.hess_coord!(nlp,z0,lambda0,hess_vals;obj_weight=1)
+hess1 = Array(Symmetric(sparse(rr_h,cc_h,vv_h,M,M),:L))
+hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,M,M),:L))
+hess3 = FiniteDiff.finite_difference_hessian(z->lagrangian_oop(z,lambda0,1.0),z0)
+pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>lambda0,σ=>1.0)))
+hess4 = Symbolics.value.(map(x->substitute(x,pmap),hess_λ))
 
-function con_h!(h, x, λ)
-   sn_iip(h, x, λ)
-   return h
+@testset "Lagrangian Hessian" begin
+    @test all(isapprox.(hess1,hess2,atol=tol))
+    @test all(isapprox.(hess1,hess3,atol=tol))
+    @test all(isapprox.(hess1,hess4,atol=tol))
+    @test all(isapprox.(hess2,hess3,atol=tol))
+    @test all(isapprox.(hess2,hess4,atol=tol))
+    @test all(isapprox.(hess3,hess4,atol=tol))
 end
+
+
+
 
 z00= low + (upp-low)/2
 df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z00)
