@@ -12,16 +12,6 @@ mkdir -p $OUT_DIR
 aws s3 cp s3://ran-s3-install-pkgs/config/RanPocKP.pem .
 chmod 400 RanPocKP.pem
 
-# copy package environment
-aws s3 cp /home/ec2-user/SageMaker/networks_hub/SAN/code/network_simulations/benchmark_timing/Project.toml "$2"Project.toml
-aws s3 cp /home/ec2-user/SageMaker/networks_hub/SAN/code/network_simulations/benchmark_timing/Manifest.toml "$2"Manifest.toml
-
-mkdir -p /home/ec2-user/joint_timing
-mkdir -p /home/ec2-user/joint_timing/src
-
-cp /home/ec2-user/SageMaker/networks_hub/SAN/code/network_simulations/joint_timing/Project.toml /home/ec2-user/joint_timing/Project.toml
-cp /home/ec2-user/SageMaker/networks_hub/SAN/code/network_simulations/joint_timing/Manifest.toml /home/ec2-user/joint_timing/Manifest.toml
-
 # copy julia script to s3
 aws s3 cp "$1" "$2"
 
