@@ -18,7 +18,7 @@ using .NetworkUtils
 # User Inputs
 T=Float32
 N = 5 #number of points
-Q = 20000 #number of samples
+Q = 100000 #number of samples
 max_iter = 2*Q 
 
 # get network
@@ -74,7 +74,7 @@ end
 
 halfQ =Q÷2
 A_in_orig = mod(Q,2)==0 ? gen_A(N,halfQ) : gen_A(N,halfQ+1)
-A_in_alt = trainingSetA(N,sample_size=halfQ,max_iter=max_iter,con="netting") # N=5 nodes, can use for training NN
+A_in_alt = NetworkUtils.trainingSetA(N,sample_size=halfQ,max_iter=max_iter,con="netting") # N=5 nodes, can use for training NN
 A_in = hcat(A_in_orig,hcat(reshape.(A_in_alt,N^2)...))
 # for i = 1:N^2
 #     for j = 1:Int(Q/2)
@@ -134,8 +134,8 @@ for i = 1:m
     y_test[:,i] = p_func(x_test[N*N+2*N+1:end,i],p_bar,reshape(x_test[1:N*N,i], (N,N)),x_test[N*N+N+1:N*N+2*N,i]) 
 end
 
-loss(x,y) = Flux.mse(model(x),y)
-model = gpu(Chain(Dense(N*N+3*N, 50, σ), Dense(50,20,σ), Dense(20,10,σ), Dense(10,10,relu), Dense(10,5,σ), Dense(5, N)))
+loss(x,y) = mean((model(x).-y).^2)
+model = gpu(Chain(Dense(N*N+3*N, N*3, σ), Dense(N*3,N*2,σ), Dense(N*2,N*2,σ),Dense(N*2,N*2,σ), Dense(N*2,N,σ),Dense(N,N,σ), Dense(N, N)))
 
 x_train = gpu(x_train)
 y_train = gpu(y_train) 
@@ -143,7 +143,7 @@ x_test = gpu(x_test)
 y_test = gpu(y_test) 
 
 ps = Flux.params(model)
-train_loader = gpu(DataLoader((x_train, y_train), batchsize=100, shuffle=true))
+train_loader = gpu(DataLoader((x_train, y_train), batchsize=200, shuffle=true))
 
 # Choosing Gradient Descent option
 opt = ADAM(0.001, (0.9, 0.8))
@@ -153,24 +153,25 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
-
-## Testing
-@testset "Neural Net Check" begin
-    #Training set MSE and Abs Error
-    @test loss(x_train,y_train) < 0.01 
-    @test mean(abs, model(x_train) - y_train) < 0.01
-    #Test set MSE and Abs Error
-    @test loss(x_test,y_test) < 0.01  
-    @test mean(abs, model(x_test) - y_test) < 0.01
-    #Test set each prediction within 0.01
-    @test abs.(model(x_test) - y_test) .< 0.01
-end;
-pct_failing = sum(abs.(model(x_test) - y_test) .> 0.01)/(size(y_test,1)*size(y_test,2))
+Flux.@epochs 1500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 
 model = cpu(model)
 @save "clearing_p_NN_gpu_N$N.bson" model
-
+model = gpu(model)
+## Testing
+@testset "Neural Net Check" begin
+    #Training set MSE and Abs Error
+    @test Flux.mse(model(x_train),y_train) < 0.01 
+    @test mean(abs, model(x_train) - y_train) < 0.01
+    #Test set MSE and Abs Error
+    @test Flux.mse(model(x_test),y_test) < 0.01  
+    @test mean(abs, model(x_test) - y_test) < 0.01
+    #Test set each prediction within 0.01
+    pct_failing_train = sum(abs.(model(x_train) - y_train) .> 0.01)/(size(y_train,1)*size(y_train,2))
+    pct_failing_test = sum(abs.(model(x_test) - y_test) .> 0.01)/(size(y_test,1)*size(y_test,2))
+    @test pct_failing_train == 0
+    @test pct_failing_test == 0
+end;
 
 #=
 
@@ -189,8 +190,6 @@ opt = NADAM()
 Flux.@epochs 150 Flux.train!(loss, ps, ncycle(train_loader, 10), opt, cb  = throttle(evalcb,150))
 model = cpu(model) # move back to cpu to save
 @save "clearing_p_NN_gpu.bson" model
-
-#=
 
 # Computing Jacobian and Hessian
 j = x -> ForwardDiff.jacobian(model, x)
