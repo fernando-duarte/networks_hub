@@ -17,8 +17,8 @@ using .NetworkUtils
 
 # User Inputs
 T=Float32
-N = 5 #number of points
-Q = 100000 #number of samples
+N = 40 #number of points
+Q = 50000 #number of samples
 max_iter = 2*Q 
 
 # get network
