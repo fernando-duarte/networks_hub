@@ -191,7 +191,12 @@ vv = NLPModels.jac_coord!(nlp,z0, jac_vals)
 jac1 = Array(sparse(rr,cc,vv))
 jac2 = Array(sparse(jac_rows,jac_cols,jac_vals))
 jac3 = FiniteDiff.finite_difference_jacobian(z->__c(z,p0,x0),z0)
-@test jac1 ≈ jac2 ≈ jac3 
+jac4 = ForwardDiff.jacobian(z->__c(z,p0,x0),z0)
+jac5 = Zygote.jacobian(z->__c(z,p0,x0),z0)[1]
+@test jac1 ≈ jac2 ≈ jac3 ≈ jac4 ≈ jac5
+# ForwardDiff.jacobian(z->c_lin(z,p0),z0)
+# ForwardDiff.gradient(z->c_quad(z,p0),z0)
+# ForwardDiff.jacobian(z->c_p(z,p0,x0),z0)
 
 
 rr_h, cc_h = NLPModels.hess_structure!(nlp,hess_rows,hess_cols)
@@ -202,6 +207,9 @@ hess3 = FiniteDiff.finite_difference_hessian(z->NLPModels.obj(nlp,z),z0)
 hess4 = FiniteDiff.finite_difference_hessian(z->NetDefs.obj(z,p0),z0)
 pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>0.0,σ=>1.0)))
 hess5 = Symbolics.value.(map(x->substitute(x,pmap),hess_σ))
+hess6 = ForwardDiff.hessian(z->NetDefs.obj(z,p0),z0)
+hess7 = Zygote.hessian(z->NetDefs.obj(z,p0),z0)
+
 
 @testset "Obj Hessian" begin
     @test all(isapprox.(hess1,hess2,atol=tol))
@@ -214,6 +222,9 @@ hess5 = Symbolics.value.(map(x->substitute(x,pmap),hess_σ))
     @test all(isapprox.(hess3,hess4,atol=tol))
     @test all(isapprox.(hess3,hess5,atol=tol))
     @test all(isapprox.(hess4,hess5,atol=tol))
+    @test all(isapprox.(hess5,hess6,atol=tol))
+    @test all(isapprox.(hess4,hess7,atol=tol))
+    @test all(isapprox.(hess6,hess7,atol=tol))
 end
 
 lambda0 = ones(Q)
@@ -223,6 +234,8 @@ hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,M,M),:L))
 hess3 = FiniteDiff.finite_difference_hessian(z->lagrangian_oop(z,lambda0,1.0),z0)
 pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>lambda0,σ=>1.0)))
 hess4 = Symbolics.value.(map(x->substitute(x,pmap),hess_λ))
+hess5 = ForwardDiff.hessian(z->NetDefs.obj(z,p0)+sum(__c(z,p0,x0)),z0)
+hess6 = Zygote.hessian(z->NetDefs.obj(z,p0)+sum(__c(z,p0,x0)),z0)
 
 @testset "Lagrangian Hessian" begin
     @test all(isapprox.(hess1,hess2,atol=tol))
@@ -231,9 +244,65 @@ hess4 = Symbolics.value.(map(x->substitute(x,pmap),hess_λ))
     @test all(isapprox.(hess2,hess3,atol=tol))
     @test all(isapprox.(hess2,hess4,atol=tol))
     @test all(isapprox.(hess3,hess4,atol=tol))
+    @test all(isapprox.(hess3,hess5,atol=tol))
+    @test all(isapprox.(hess4,hess5,atol=tol))
+    @test all(isapprox.(hess5,hess6,atol=tol))
+    @test all(isapprox.(hess3,hess6,atol=tol))
 end
 
 
+###################beta dist##############################
+include("IncBetaDer.jl"); using .IncBetaDer
+using ForwardDiff, DistributionsAD, Test, FiniteDiff, FiniteDifferences
+
+a0=1.1
+b0=15.0
+x0 = 0.1
+maxapp=100; minapp=maxapp; ϵ=1e-12
+(cdf1,dcdf_da1,dcdf_db1,dcdf_dx1)=IncBetaDer.beta_inc_grad(a0, b0, x0, maxapp, minapp, ϵ)
+cdfAD(a,b,x)=DistributionsAD.cdf(DistributionsAD.Beta(a,b),x)
+cdf2 = cdfAD(a0,b0,x0)
+
+dcdf_da2 = ForwardDiff.derivative(a->IncBetaDer.beta_inc_grad(a, b0, x0, maxapp, minapp, ϵ)[1],a0)
+dcdf_db2 = ForwardDiff.derivative(b->IncBetaDer.beta_inc_grad(a0, b, x0, maxapp, minapp, ϵ)[1],b0)
+dcdf_dx2 = ForwardDiff.derivative(x->IncBetaDer.beta_inc_grad(a0, b0, x, maxapp, minapp, ϵ)[1],x0)
+
+beta_inc_grad_vec(y) = [beta_inc_grad(y[1], y[2], y[3], maxapp, minapp, ϵ)...]
+
+jac_cdf = ForwardDiff.jacobian(beta_inc_grad_vec,[a0,b0,x0])
+jac_cdf2 = FiniteDifferences.jacobian(central_fdm(7, 1),beta_inc_grad_vec, [a0,b0,x0])[1]
+hess =  ForwardDiff.hessian(y->beta_inc_grad_vec(y)[1],[a0,b0,x0])
+hess2 =  FiniteDiff.finite_difference_hessian(y->beta_inc_grad_vec(y)[1],[a0,b0,x0])
+
+# dcdf_da3 = ForwardDiff.derivative(a->cdfAD(a,b0,x0),a0)
+# dcdf_db3 = ForwardDiff.derivative(b->cdfAD(a0,b,x0),b0)
+# dcdf_dx3 =ForwardDiff.derivative(x->cdfAD(a0,b0,x),x0)
+
+@testset "beta_inc_grad" begin
+    @test beta_inc_grad_vec([a0,b0,x0])==[beta_inc_grad(a0, b0, x0, maxapp, minapp, ϵ)...]
+
+    @test cdf1 ≈ cdf2
+    @test isapprox(dcdf_da1, dcdf_da2, atol=1e-5)
+    @test isapprox(dcdf_db1, dcdf_db2, atol=1e-5)
+    @test isapprox(dcdf_dx1, dcdf_dx2, atol=1e-5)
+
+    @test jac_cdf ≈ jac_cdf2
+    @test all(jac_cdf[1,:] .≈ [dcdf_da2,dcdf_db2,dcdf_dx2])
+    @test all(isapprox.(jac_cdf[2:end,:],hess, atol=1e-5))
+    @test all(isapprox.(jac_cdf[2:end,:],hess2, atol=1e-5))
+end
+
+using Symbolics, Distributions
+@variables a b x
+beta_inc_grad(a, b, x0::Float64)
+@register 
+
+
+Distributions.logcdf(Beta(a0,b0),x)
+@register IncBetaDer.beta_inc_grad(a, b, x)
+derivative(::typeof(sign), args::NTuple{1,Any}, ::Val{1}) = 0
+
+############################################################
 
 
 z00= low + (upp-low)/2

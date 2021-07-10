@@ -6,7 +6,7 @@ import Distributions
 include("NetworkType.jl"); using .NetworkType
 include("IncBetaDer.jl"); #using .IncBetaDer
 
-export T, N, M, P, p_dense, z0, x0, c_lin,c_quad,c_p, low, upp, cL, uL, obj
+export T, N, M, P, p_dense, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, obj
 
 ## instantiate
 T=Float64
