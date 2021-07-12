@@ -1,4 +1,5 @@
 module NonLinProbPrecompile
+
     #include("NetworkType.jl");using .NetworkType
     include("NetDefs.jl"); using .NetDefs
     using ModelingToolkit, LinearAlgebra, RuntimeGeneratedFunctions
@@ -13,7 +14,8 @@ module NonLinProbPrecompile
         ceq = vcat(
             0 .~ c_lin(zcat,pcat),
             0  ~ c_quad(zcat,pcat),
-            0 .~ c_p(zcat,pcat,x0)
+            0 .~ c_p(zcat,pcat,x0),
+            0 .~ c_chance(zcat,pcat)
           )
         ns = NonlinearSystem(ceq,z,p)
         return generate_function(ns,z,p)
@@ -37,7 +39,8 @@ module NonLinProbPrecompileNum
         ceq = vcat(
             0 .~ c_lin(zcat,p_dense),
             0  ~ c_quad(zcat,p_dense),
-            0 .~ c_p(zcat,p_dense,x0)
+            0 .~ c_p(zcat,p_dense,x0),
+            0 .~ c_chance(zcat,p_dense)
           )
         ns = NonlinearSystem(ceq,z,[])
         return generate_function(ns,z,[])

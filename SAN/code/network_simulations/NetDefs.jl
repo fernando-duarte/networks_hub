@@ -1,10 +1,12 @@
 module NetDefs
 
-using BSON, DataFrames, LinearAlgebra, SparseArrays, Parameters, Statistics, NLsolve, Quadrature, Cuba,  DistributionsAD, SpecialFunctions, BlockArrays, Revise, Test
+using BSON, DataFrames, LinearAlgebra, SparseArrays, Parameters, Statistics, NLsolve, Quadrature, Cuba, DistributionsAD, SpecialFunctions, BlockArrays, Revise, Test
 using ModelingToolkit, GalacticOptim, Optim, NonlinearSolve
+using Symbolics: IfElse.ifelse
 import Distributions
 include("NetworkType.jl"); using .NetworkType
 include("IncBetaDer.jl"); #using .IncBetaDer
+include("ExtendedPowerDist.jl");
 
 export T, N, M, P, p_dense, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, obj
 
@@ -83,13 +85,17 @@ end
 
 ## chance constraints ⟺ c_chance(z)=0
 # Prob(c[i]x[i]>=w[i])=delta[i]
-beta_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x)
+#dist_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x) # beta dist
+#dist_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - ExtendedPowerDist.cdf(ExtendedPowerDist.ExtPow(a,b),x) : zero(x) # extended power dist
+#dist_ccdf(a,b,x::Num) = Symbolics.IfElse.ifelse((0 < x) & (x < 1),1 - ExtendedPowerDist.cdf(ExtendedPowerDist.ExtPow(a,b),x),0 )
+dist_ccdf(a,b,x) = 1 - ExtendedPowerDist.cdf(ExtendedPowerDist.ExtPow(a,b),x)
+
 function c_chance(z,p)
     c, α, β = selc*z, selα*z, selβ*z
     w, delta = p[1:N], p[2N+1:3N]
     zeroz = zero(z[1])+0.0001
     onez = one(z[1])-0.0001
-    return beta_ccdf.(α,β,max.(min.(w./c,onez),zeroz) ) .- delta
+    return dist_ccdf.(α,β,max.(min.(w./c,onez),zeroz) ) .- delta
 end
 
 ## clearing vector constraint
@@ -258,5 +264,6 @@ A0 = (LowerTriangular(ones(N,N))-Matrix(I,N,N))/2
 z0[1:N^2] = [A0...]
 p0 = p_dense
 x0 = ones(N,mini_batch)/10
+
 
 end # module

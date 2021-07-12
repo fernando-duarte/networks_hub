@@ -1,7 +1,20 @@
-Pkg.add(name="KeywordCalls", version="0.2.2") 
-Pkg.add(name="MeasureTheory", version="0.8.2") 
+module ExtendedPowerDist
+# Implements the pdf, cdf, quantiles, and related functions, for the 
+# Extended Power Distribution using MeasureTheory.jl
+#= latex citation:
+@misc{ogbonnaya2017extended,
+      title={The extended power distribution: A new distribution on $(0, 1)$}, 
+      author={Chibueze E. Ogbonnaya and Simon P. Preston and Andrew T. A. Wood},
+      year={2017},
+      eprint={1711.02774},
+      archivePrefix={arXiv},
+      primaryClass={stat.ME}
+}
+=#
+export GenExtPow,ExtPow,LinFail,logdensity,cdf,logcdf,density,moment,quantile,mode
 
-
+# Pkg.add(name="KeywordCalls", version="0.2.2") 
+# Pkg.add(name="MeasureTheory", version="0.8.2") 
 using MeasureTheory
 
 # generalized extended power distribution with k parameters 
@@ -73,10 +86,10 @@ function density(d::LinFail{(:α₀,:α₁)}, x)
     return  (d.α₀ + 2d.α₁*x )*exp( -d.α₀*x - d.α₁*x^2)
 end
 
+end # module
 
-##
+#= tests
 using ForwardDiff, Zygote, Quadrature, Cuba, Test, QuadGK
-
 
 @testset "ExtPow" begin
     xgrid = 0.0001:0.01:(0.9999)
@@ -136,8 +149,10 @@ using ForwardDiff, Zygote, Quadrature, Cuba, Test, QuadGK
              
     end
 end
-    
-using Plots
+=#
+
+#= plots
+using Plots: plot
 xgrid = 0:0.01:1;
 ygrid1 = [density(ExtPow(0.1,0.2),x) for x in xgrid];
 ygrid2 = [density(ExtPow(1.1,0.2),x) for x in xgrid];
@@ -147,9 +162,9 @@ plot(xgrid, hcat(ygrid1,ygrid2,ygrid3,ygrid4))
 
 xgrid = 0:0.01:1;
 ygrid1 = [density(GenExtPow([0.1,0.2,0.1]),x) for x in xgrid];
-ygrid2 = [density(GenExtPow([1.1,0.2,1]),x) for x in xgrid];
-ygrid3 = [density(GenExtPow([0.1,1.2,5]),x) for x in xgrid];
-ygrid4 = [density(GenExtPow([1.1,1.2,5,10]),x) for x in xgrid];
+ygrid2 = [density(GenExtPow([8,10.2,0.1]),x) for x in xgrid];
+ygrid3 = [density(GenExtPow([0.1,1.2,5,20,20]),x) for x in xgrid];
+ygrid4 = [density(GenExtPow([5.1,6.2,4.5,8.10]),x) for x in xgrid];
 plot(xgrid, hcat(ygrid1,ygrid2,ygrid3,ygrid4))
 
 xgrid = 0:0.05:10;
@@ -158,6 +173,19 @@ ygrid2 = [density(LinFail(1.1,0.2),x) for x in xgrid];
 ygrid3 = [density(LinFail(0.1,1.2),x) for x in xgrid];
 ygrid4 = [density(LinFail(1.1,1.2),x) for x in xgrid];
 plot(xgrid, hcat(ygrid1,ygrid2,ygrid3,ygrid4))
+=#
 
-
+# compatible with symbolics
+#= 
 using Symbolics
+
+@variables α,β,x
+pdf_sym = density(ExtPow(α,β),x)
+cdf_sym = cdf(ExtPow(α,β),x)
+grad_pdf_sym = Symbolics.gradient(pdf_sym,vcat(α,β,x); simplify=true)
+grad_cdf_sym = Symbolics.gradient(cdf_sym,vcat(α,β,x); simplify=true)
+hess_pdf_sym = Symbolics.hessian(pdf_sym,vcat(α,β,x); simplify=true)
+hess_cdf_sym = Symbolics.hessian(cdf_sym,vcat(α,β,x); simplify=true)
+@test simplify(Symbolics.derivative(cdf_sym,x; simplify=true) - pdf_sym, expand=true)==0
+=#
+

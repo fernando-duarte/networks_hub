@@ -16,7 +16,6 @@
 # @reexport using .NetworkType
 # export optimParam, c_lin, c_quad, c_chance, c_p, c_pNL, c_, c_NL, c_, c_NL, obj, obj_full, loss_d
 
-
 import Pkg; Pkg.activate("optim"); Pkg.instantiate()
 #Pkg.resolve();Pkg.gc();Pkg.precompile();
 using BSON, DataFrames, LinearAlgebra, SparseArrays, Parameters, Statistics, NLsolve, Quadrature, Cuba,  DistributionsAD, SpecialFunctions, BlockArrays, Revise, Test
@@ -26,7 +25,7 @@ include("NetworkType.jl"); using .NetworkType
 #include("IncBetaDer.jl"); #using .IncBetaDer
 include("NetDefs.jl"); using .NetDefs
 include("NonLinProbPrecompile.jl"); using .NonLinProbPrecompile; using .NonLinProbPrecompileObj; using .NonLinProbPrecompileNum
-
+include("ExtendedPowerDist.jl");
 
 
 
