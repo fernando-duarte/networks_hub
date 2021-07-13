@@ -8,7 +8,8 @@ using Flux.Data: DataLoader
 using IterTools: ncycle
 using Flux: throttle
 using ForwardDiff
-using Convex, SCS, MathOptInterface, Parameters, Suppressor
+using Convex, SCS, MathOptInterface, Parameters, Suppressor, Revise
+using Dates, MonthlyDates
 const MOI = MathOptInterface
 using BSON
 using BSON: @load, @save
@@ -17,23 +18,37 @@ using .NetworkUtils
 
 # User Inputs
 T=Float32
-N = 40 #number of points
-Q = 50000 #number of samples
-max_iter = 2*Q 
+N = 5 #number of points
+Q = 200000 #number of samples - size(train) = Q/2 size(test) = Q/2
+max_iter = 2*Q
+dates=[Date(QuarterlyDate("2008-Q4"))]
 
 # get network
 # net = Network{T,N}()
 data_dict = BSON.load("data.bson")
-net = netEmp(data_dict[:data],N)[1]
-@unpack p_bar, a, delta, w, γ = net
-assets = a
-g0 = γ
+#net = netEmp(data_dict[:data],N)[1]
+data_dict[:data].julia_dates = toJuliaDates(data_dict[:data].qt_dt)
+
+keep = data_dict[:data].julia_dates.==lastdayofquarter(dates[1])
+df_t = sort(data_dict[:data][keep,:], :assets, rev = true)
+  
+nm_b = [findall(x->x==false,ismissing.(df_t.b))...]
+nm_b = nm_b[isless.(nm_b, N+1)] # indices for non-missing b
+nm_c = [findall(x->x==false,ismissing.(df_t.c))...]
+nm_c = nm_c[isless.(nm_c, N+1)] # indices for non-missing b
+df_t = coalesce.(df_t, df_t.assets/1.5) # replace missing with some value
+      
+b = [deepcopy(Array{T}(df_t[1:N,[:b]]))...]
+c = [deepcopy(Array{T}(df_t[1:N,[:c]]))...]
+w = [deepcopy(Array{T}(df_t[1:N,[:w]]))...]
+p_bar = [deepcopy(Array{T}(df_t[1:N,[:p_bar]]))...]
+delta = [deepcopy(Array{T}(df_t[1:N,[:delta]]))...]      
 
 # initial guess
 rng =  Random.seed!(123)
 A0 = zeros(N,N)
-c0 =  net.c 
-b0 = net.b
+c0 =  c
+b0 = b
 α0 = fill(1.5,N)
 β0= fill(15.0,N)
 
@@ -120,7 +135,7 @@ function p_func(x, p_bar, A, c)
 end
 
 ## Training NN
-m = Int(Q÷10) #number of observations in test set
+m = Int(Q÷2) #number of observations in test set
 x_train = vcat(A_in, b_in, c_in, x_in) #order is A, b,c,x
 x_train = x_train[:,randperm(Q)] #randomly sort columns of X_train
 x_test = x_train[:,1:m]
@@ -135,15 +150,15 @@ for i = 1:m
 end
 
 loss(x,y) = mean((model(x).-y).^2)
-model = gpu(Chain(Dense(N*N+3*N, N*3, σ), Dense(N*3,N*2,σ), Dense(N*2,N*2,σ),Dense(N*2,N*2,σ), Dense(N*2,N,σ),Dense(N,N,σ), Dense(N, N)))
-
+model = gpu(Chain(Dense(N*N+3*N, N*3, σ), Dense(N*3,N*2,σ), Dense(N*2, N*2, σ), Dense(N*2,N*2,σ),Dense(N*2,N*2,σ), Dense(N*2,N,σ),Dense(N,N,σ), Dense(N, N)))
+#@load "clearing_p_NN_gpu_N$N.bson" model
 x_train = gpu(x_train)
 y_train = gpu(y_train) 
 x_test = gpu(x_test)
 y_test = gpu(y_test) 
 
 ps = Flux.params(model)
-train_loader = gpu(DataLoader((x_train, y_train), batchsize=200, shuffle=true))
+train_loader = gpu(DataLoader((x_train, y_train), batchsize=500, shuffle=true))
 
 # Choosing Gradient Descent option
 opt = ADAM(0.001, (0.9, 0.8))
@@ -153,7 +168,7 @@ evalcb() = @show(loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 1500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+Flux.@epochs 3500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 
 model = cpu(model)
 @save "clearing_p_NN_gpu_N$N.bson" model
