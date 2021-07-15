@@ -5,15 +5,26 @@ using ModelingToolkit, GalacticOptim, Optim, NonlinearSolve
 using Symbolics: IfElse.ifelse
 import Distributions
 include("NetworkType.jl"); using .NetworkType
-include("IncBetaDer.jl"); #using .IncBetaDer
+#include("IncBetaDer.jl"); #using .IncBetaDer
 include("ExtendedPowerDist.jl");
+using Flux
+using BSON: @load, @save
 
-export T, N, M, P, p_dense, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, obj
+export T, N, M, P, p0, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, obj, contraction
+
+
+#=
+##TO DO####
+N=5
+@load "clearing_p_NN_gpu_N$N.bson" model
+#model(vcat(A...,b,c,x)) gives clearing vector p
+############# 
+=#
 
 ## instantiate
 T=Float64
 const N=5
-mini_batch=1
+mini_batch=10
 data_dict = BSON.load("data.bson")
 network = netEmp(data_dict[:data],5)[1]
 @unpack w, p_bar, delta, γ, a = network
@@ -24,16 +35,16 @@ M = N^2+4*N+N*mini_batch
 
 # constants for linear constraints
 # hᵀz=q
-h₁₁ᵀ = hcat(sparse(kron(Matrix{T}(I,N,N),p_bar')))
-h₁ᵀ = hcat(h₁₁ᵀ,spzeros(T,N,N),sparse(I,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,mini_batch*N))
-q₁ = a
+const h₁₁ᵀ = hcat(sparse(kron(Matrix{T}(I,N,N),p_bar')))
+const h₁ᵀ = hcat(h₁₁ᵀ,spzeros(T,N,N),sparse(I,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,mini_batch*N))
+const q₁ = a
 
-h₂₁ᵀ = repeat(spdiagm(p_bar),1,N)
-h₂ᵀ = hcat(h₂₁ᵀ,sparse(I,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,mini_batch*N))
-q₂ = p_bar
+const h₂₁ᵀ = repeat(spdiagm(p_bar),1,N)
+const h₂ᵀ = hcat(h₂₁ᵀ,sparse(I,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,N),spzeros(T,N,mini_batch*N))
+const q₂ = p_bar
 
-hᵀ = vcat(h₁ᵀ,h₂ᵀ)
-q = vcat(q₁,q₂)
+const hᵀ = vcat(h₁ᵀ,h₂ᵀ)
+const q = vcat(q₁,q₂)
 
 # constants for quadratic constraints
 # zᵀHz = 0
@@ -41,26 +52,26 @@ li = LinearIndices((N,N))
 liᵀ= transpose(li)
 id = li[tril!(trues(N,N), 0)]
 idᵀ = liᵀ[tril!(trues(N,N), 0)]
-H = sparse(vcat(id,idᵀ),vcat(idᵀ,id),T(0.5),M,M)
+const H = sparse(vcat(id,idᵀ),vcat(idᵀ,id),T(0.5),M,M)
 # add a linear term to the quadratic form
 # zᵀHz + h₃ᵀz = q₃
 #h₃ᵀ = spzeros(T,(1,M))
 #q₃ = spzeros(T,1)
 
-# const selA  = sparse(1:N^2,1:N^2,T(1),N^2,M)
-# const selb  = sparse(1:N,N^2+1:N^2+N,T(1),N,M)
-# const selc  = sparse(1:N,N^2+N+1:N^2+2N,T(1),N,M)
-# const selα  = sparse(1:N,N^2+2N+1:N^2+3N,T(1),N,M)
-# const selβ  = sparse(1:N,N^2+3N+1:N^2+4N,T(1),N,M)
-# const selp  = sparse(1:mini_batch*N,N^2+4N+1:M,T(1),mini_batch*N,M)
+const selA  = sparse(1:N^2,1:N^2,T(1),N^2,M)
+const selb  = sparse(1:N,N^2+1:N^2+N,T(1),N,M)
+const selc  = sparse(1:N,N^2+N+1:N^2+2N,T(1),N,M)
+const selα  = sparse(1:N,N^2+2N+1:N^2+3N,T(1),N,M)
+const selβ  = sparse(1:N,N^2+3N+1:N^2+4N,T(1),N,M)
+const selp  = sparse(1:mini_batch*N,N^2+4N+1:M,T(1),mini_batch*N,M)
 
 # dense 
-const selA  =  Array(sparse(1:N^2,1:N^2,T(1),N^2,M))
-const selb  =  Array(sparse(1:N,N^2+1:N^2+N,T(1),N,M))
-const selc  =  Array(sparse(1:N,N^2+N+1:N^2+2N,T(1),N,M))
-const selα  =  Array(sparse(1:N,N^2+2N+1:N^2+3N,T(1),N,M))
-const selβ  =  Array(sparse(1:N,N^2+3N+1:N^2+4N,T(1),N,M))
-const selp  =  Array(sparse(1:mini_batch*N,N^2+4N+1:M,T(1),mini_batch*N,M))
+# const selA  =  Array(sparse(1:N^2,1:N^2,T(1),N^2,M))
+# const selb  =  Array(sparse(1:N,N^2+1:N^2+N,T(1),N,M))
+# const selc  =  Array(sparse(1:N,N^2+N+1:N^2+2N,T(1),N,M))
+# const selα  =  Array(sparse(1:N,N^2+2N+1:N^2+3N,T(1),N,M))
+# const selβ  =  Array(sparse(1:N,N^2+3N+1:N^2+4N,T(1),N,M))
+# const selp  =  Array(sparse(1:mini_batch*N,N^2+4N+1:M,T(1),mini_batch*N,M))
 
 # const selAd  = Array(selA)
 # const selbd  = Array(selb)
@@ -88,14 +99,16 @@ end
 #dist_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x) # beta dist
 #dist_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - ExtendedPowerDist.cdf(ExtendedPowerDist.ExtPow(a,b),x) : zero(x) # extended power dist
 #dist_ccdf(a,b,x::Num) = Symbolics.IfElse.ifelse((0 < x) & (x < 1),1 - ExtendedPowerDist.cdf(ExtendedPowerDist.ExtPow(a,b),x),0 )
+#dist_ccdf(a,b,x) = 1 - exp(ExtendedPowerDist.logcdf(ExtendedPowerDist.ExtPow(a,b),x))
 dist_ccdf(a,b,x) = 1 - ExtendedPowerDist.cdf(ExtendedPowerDist.ExtPow(a,b),x)
 
 function c_chance(z,p)
     c, α, β = selc*z, selα*z, selβ*z
     w, delta = p[1:N], p[2N+1:3N]
-    zeroz = zero(z[1])+0.0001
-    onez = one(z[1])-0.0001
-    return dist_ccdf.(α,β,max.(min.(w./c,onez),zeroz) ) .- delta
+#     zeroz = zero(z[1])+0.0001
+#     onez = one(z[1])-0.0001
+#     return dist_ccdf.(α,β,max.(min.(w./c,onez),zeroz) ) .- delta
+    return dist_ccdf.(α,β,w./c) .- delta
 end
 
 ## clearing vector constraint
@@ -106,7 +119,7 @@ function contraction(z,p,x)
     p_bar, γ = p[N+1:2N], p[3N+1]
     p_bar_rep = repeat(p_bar,1,mb)
     c_rep = repeat(c,1,mb)
-    return reshape( min.(max.(0.0,(1+γ)*(Aᵀ*p_clear + (one(x[1]) .- x).*c_rep) - γ*p_bar_rep),p_bar_rep) ,N*mb)
+    return reshape( min.(max.(0.0,(1+γ)*(Aᵀ*p_clear + (1 .- x).*c_rep) - γ*p_bar_rep),p_bar_rep) ,N*mb)
 end
 
 function c_p(z,p,x)
@@ -136,8 +149,8 @@ function _c(z,p,x)
     vcat(
         c_lin(z,p),
         c_quad(z,p),
-        c_chance(z,p),
-        c_p(z,p,x)
+        c_p(z,p,x),
+        c_chance(z,p)
         )
 end
 
@@ -247,23 +260,25 @@ end
 
 # upper and lower bounds
 # low<=z<=upp
-lowα = 0.5 ;uppα = 10
-lowβ = 1   ;uppβ = 30
+lowα = 0.01 ;uppα = 0.5
+lowβ = 0.01   ;uppβ = 0.5
 low_zero = eps(T) # eps(T) T(0.005)
 low = vcat(spzeros(T,N^2),fill(low_zero,N),fill(low_zero,N),fill(lowα,N),fill(lowβ,N),fill(low_zero,N*mini_batch))
-low = Array(low)
+#low = Array(low)
 upp = vcat(ones(T,N^2),p_bar,a,Array{T}(fill(uppα,N)),Array{T}(fill(uppβ,N)),repeat(p_bar,mini_batch))
 
-p_sparse = vcat(w, p_bar, delta, γ, a ,q ,hᵀ...,H...)
-p_dense =  vcat(w, p_bar, delta, γ, a ,q,Array(hᵀ)...,Array(H)...)
+const p_sparse = vcat(sparse(vcat(w, p_bar, delta, γ, a ,q)),reshape(hᵀ,2N*M),reshape(H,M^2))
+#const p_dense =  vcat(w, p_bar, delta, γ, a ,q,Array(hᵀ)...,Array(H)...)
 P = 2N*M+M^2+6N+1 #P==length(p_dense)==number of parameters
 
 
 z0 = low + (upp-low)/2;
-A0 = (LowerTriangular(ones(N,N))-Matrix(I,N,N))/2
+const A0 = (LowerTriangular(ones(N,N))-Matrix(I,N,N))/2
 z0[1:N^2] = [A0...]
-p0 = p_dense
+z0 = Array(z0)
+const p0 = p_sparse #p_dense
 x0 = ones(N,mini_batch)/10
+
 
 
 end # module

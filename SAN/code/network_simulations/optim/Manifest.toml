@@ -295,9 +295,9 @@ version = "0.5.7"
 
 [[Convex]]
 deps = ["AbstractTrees", "BenchmarkTools", "LinearAlgebra", "MathOptInterface", "OrderedCollections", "SparseArrays", "Test"]
-git-tree-sha1 = "f057f56e7081e84b5bb844dc37e0fcb294613cc6"
+git-tree-sha1 = "fc83adf10e8ebf72f6e311767fe3143a56c8b660"
 uuid = "f65535da-76fb-5f13-bab9-19810c17039a"
-version = "0.14.10"
+version = "0.14.11"
 
 [[CoupledFields]]
 deps = ["LinearAlgebra", "Statistics", "StatsBase"]
@@ -428,9 +428,9 @@ version = "0.4.2"
 
 [[DynamicPolynomials]]
 deps = ["DataStructures", "Future", "LinearAlgebra", "MultivariatePolynomials", "MutableArithmetics", "Pkg", "Reexport", "Test"]
-git-tree-sha1 = "b17c665e4994b1e0f30148ffdd16188cae4e9d1b"
+git-tree-sha1 = "5e47c4d652ea67652b7c5945c79c46472397d47f"
 uuid = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
-version = "0.3.17"
+version = "0.3.18"
 
 [[EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1223,9 +1223,9 @@ version = "0.2.2"
 
 [[MultivariatePolynomials]]
 deps = ["DataStructures", "LinearAlgebra", "MutableArithmetics"]
-git-tree-sha1 = "db4718c1b40e0b0ff739159c7230d5266bbfc7db"
+git-tree-sha1 = "45c9940cec79dedcdccc73cc6dd09ea8b8ab142c"
 uuid = "102ac46a-7ee4-5c85-9060-abc95bfdeaa3"
-version = "0.3.17"
+version = "0.3.18"
 
 [[MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -1799,15 +1799,15 @@ version = "2.2.0"
 
 [[SymbolicUtils]]
 deps = ["AbstractTrees", "ChainRulesCore", "Combinatorics", "ConstructionBase", "DataStructures", "DynamicPolynomials", "IfElse", "LabelledArrays", "LinearAlgebra", "MultivariatePolynomials", "NaNMath", "Setfield", "SparseArrays", "SpecialFunctions", "StaticArrays", "TimerOutputs"]
-git-tree-sha1 = "91659406d1c4a06bcbf074a11727dff49c35240c"
+git-tree-sha1 = "17fecd52e9a82ca52bfc9d28a2d31b33458a6ce0"
 uuid = "d1185830-fcd6-423d-90d6-eec64667417b"
-version = "0.13.0"
+version = "0.13.1"
 
 [[Symbolics]]
 deps = ["ConstructionBase", "DiffRules", "Distributions", "DocStringExtensions", "DomainSets", "IfElse", "Latexify", "Libdl", "LinearAlgebra", "MacroTools", "NaNMath", "RecipesBase", "Reexport", "Requires", "RuntimeGeneratedFunctions", "SciMLBase", "Setfield", "SparseArrays", "SpecialFunctions", "StaticArrays", "SymbolicUtils", "TreeViews"]
-git-tree-sha1 = "713685972c3991b23a430fea59e32136140f2528"
+git-tree-sha1 = "a1eb487f1c042bdc1087053f7a7a40fbb2b998a7"
 uuid = "0c5d862f-8b57-4792-8d23-62f2024744c7"
-version = "1.2.2"
+version = "1.2.3"
 
 [[TOML]]
 deps = ["Dates"]

@@ -1,5 +1,13 @@
 include("NU2_preamble.jl")
 
+#### test contraction ####
+f_cont = eval(NonLinProbPrecompileContraction.f_noeval_contraction[1])
+@variables z[1:M]
+p=[]
+f_cont_sym = f_cont(z,p)
+
+##############
+
 f = eval(NonLinProbPrecompile.f_noeval_good[1])
 f_num = eval(NonLinProbPrecompileNum.f_noeval_num[1])
 f_obj = eval(NonLinProbPrecompileObj.f_noeval_obj)
@@ -9,7 +17,7 @@ obj_expr = f_obj(z,p)
 f_expr = f_num(z,p)
 Q = length(f_expr) # number of constraints
 eq = 0 .~ f_expr
-ns = NonlinearSystem(eq,z,p)
+ns = NonlinearSystem(eq,z,[]) #NonlinearSystem(eq,z,p)
 os = OptimizationSystem(obj_expr,z,[])
 
 obj_num = generate_function(os)
@@ -28,18 +36,17 @@ sn = @eval eval(sys_num[1])
 sn_iip = @eval eval(sys_num[2])
 jn = @eval eval(jac_num[1])
 js_iip = @eval eval(jac_sym[2])
-p0=Float64[];
-@show on(z0,p0)
-@show gn(z0,p0)
-@show sn(z0,p0)
-@show jn(z0,p0)
+@show on(z0,[])
+@show gn(z0,[])
+@show sn(z0,[])
+@show jn(z0,[])
 
 gn_z0 = zeros(length(z0)) 
 sn_z0 = zeros(length(eq)) 
 jn_z0 = spzeros(length(eq),length(z0)) 
-@show gn_iip(gn_z0,z0,p0)
-@show sn_iip(sn_z0,z0,p0)
-@show js_iip(jn_z0,z0,p0)
+@show gn_iip(gn_z0,z0,[])
+@show sn_iip(sn_z0,z0,[])
+@show js_iip(jn_z0,z0,[])
 @show gn_z0
 @show sn_z0
 @show jn_z0
@@ -151,7 +158,7 @@ lagrangian_oop(z0,λ0,σ0)
 include("Network_NLPModel.jl")
 using  NLPModelsIpopt
 
-nlp = NetNLP(z0,low,upp,Q,jac_sp,rows_jac_sp,cols_jac_sp,hess_sp_lt,rows_hess_sp,cols_hess_sp,N; minimize = true,name = "Network Optimization",p=[])
+nlp = NetNLP(z0,Array(low),upp,Q,jac_sp,rows_jac_sp,cols_jac_sp,hess_sp_lt,rows_hess_sp,cols_hess_sp,N; minimize = true,name = "Network Optimization",p=[])
 
 stats = ipopt(nlp,output_file="ipopt_out.txt")
 print(stats)
@@ -161,15 +168,18 @@ function __c(z,p,x)
     vcat(
         c_lin(z,p),
         c_quad(z,p),
-        c_p(z,p,x)
+        c_p(z,p,x),
+        c_chance(z,p)
         )
 end
 
 tol = 1e-6
-@test all(isapprox.(__c(stats.solution,p_dense,x0),0,atol=tol))         
+@test all(isapprox.(__c(stats.solution,p0,x0),0,atol=tol))         
 @test all(low .<= stats.solution .<= upp)
 
-reshape(stats.solution[1:N^2],N,N)
+Asol = reshape(stats.solution[1:N^2],N,N)
+Asol[Asol.<1e-4] .=0
+@show Asol
 
 ################ tests ###############
 using ForwardDiff, Zygote, FiniteDiff
@@ -178,11 +188,10 @@ hess_vals = zeros(nnz(hess_sp_lt))
 jac_vals = zeros(nnz(jac_sp));jac_rows=zeros(Int,nnz(jac_sp));jac_cols=similar(jac_rows)
 hess_vals = zeros(nnz(hess_sp_lt));hess_rows=zeros(Int,nnz(hess_sp_lt));hess_cols=similar(hess_rows)
 
-
-p0 = p_dense
-@test NetDefs.obj(z0,p0)==NLPModels.obj(nlp,z0)
-@test vcat(NetDefs.c_lin(z0,p0), NetDefs.c_quad(z0,p0), NetDefs.c_p(z0,p0,x0)) == __c(z0,p0,x0)
-@test sum(abs2,__c(z0,p0,x0)-NLPModels.cons!(nlp,z0,c_vals)) ≈ 0 atol=1e-30
+p0A = Array(p0)
+@test NetDefs.obj(z0,p0) ≈ NLPModels.obj(nlp,z0)
+@test vcat(NetDefs.c_lin(z0,p0), NetDefs.c_quad(z0,p0), NetDefs.c_p(z0,p0,x0),NetDefs.c_chance(z0,p0)) == __c(z0,p0,x0)
+@test sum(abs2,__c(z0,p0A,x0)-NLPModels.cons!(nlp,z0,c_vals)) ≈ 0 atol=1e-30
 NLPModels.cons!(nlp,z0,c_vals);
 @test sum(abs2,__c(z0,p0,x0)-c_vals) ≈ 0 atol=1e-30
 
@@ -191,8 +200,8 @@ vv = NLPModels.jac_coord!(nlp,z0, jac_vals)
 jac1 = Array(sparse(rr,cc,vv))
 jac2 = Array(sparse(jac_rows,jac_cols,jac_vals))
 jac3 = FiniteDiff.finite_difference_jacobian(z->__c(z,p0,x0),z0)
-jac4 = ForwardDiff.jacobian(z->__c(z,p0,x0),z0)
-jac5 = Zygote.jacobian(z->__c(z,p0,x0),z0)[1]
+jac4 = sparse(ForwardDiff.jacobian(z->__c(z,p0A,x0),z0))
+jac5 = sparse(Zygote.jacobian(z->__c(z,p0A,x0),z0)[1])
 @test jac1 ≈ jac2 ≈ jac3 ≈ jac4 ≈ jac5
 # ForwardDiff.jacobian(z->c_lin(z,p0),z0)
 # ForwardDiff.gradient(z->c_quad(z,p0),z0)
@@ -207,8 +216,8 @@ hess3 = FiniteDiff.finite_difference_hessian(z->NLPModels.obj(nlp,z),z0)
 hess4 = FiniteDiff.finite_difference_hessian(z->NetDefs.obj(z,p0),z0)
 pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>0.0,σ=>1.0)))
 hess5 = Symbolics.value.(map(x->substitute(x,pmap),hess_σ))
-hess6 = ForwardDiff.hessian(z->NetDefs.obj(z,p0),z0)
-hess7 = Zygote.hessian(z->NetDefs.obj(z,p0),z0)
+hess6 = sparse(ForwardDiff.hessian(z->NetDefs.obj(z,p0A),z0))
+hess7 = sparse(Zygote.hessian(z->NetDefs.obj(z,p0A),z0))
 
 
 @testset "Obj Hessian" begin
@@ -234,8 +243,8 @@ hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,M,M),:L))
 hess3 = FiniteDiff.finite_difference_hessian(z->lagrangian_oop(z,lambda0,1.0),z0)
 pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>lambda0,σ=>1.0)))
 hess4 = Symbolics.value.(map(x->substitute(x,pmap),hess_λ))
-hess5 = ForwardDiff.hessian(z->NetDefs.obj(z,p0)+sum(__c(z,p0,x0)),z0)
-hess6 = Zygote.hessian(z->NetDefs.obj(z,p0)+sum(__c(z,p0,x0)),z0)
+hess5 = sparse(ForwardDiff.hessian(z->NetDefs.obj(z,p0A)+sum(__c(z,p0A,x0)),z0))
+hess6 = sparse(Zygote.hessian(z->NetDefs.obj(z,p0A)+sum(__c(z,p0A,x0)),z0))
 
 @testset "Lagrangian Hessian" begin
     @test all(isapprox.(hess1,hess2,atol=tol))
@@ -302,203 +311,9 @@ Distributions.logcdf(Beta(a0,b0),x)
 @register IncBetaDer.beta_inc_grad(a, b, x)
 derivative(::typeof(sign), args::NTuple{1,Any}, ::Val{1}) = 0
 
-############################################################
-
-
-z00= low + (upp-low)/2
-df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z00)
-lc = spzeros(Q)
-uc = spzeros(Q)
-dfc = TwiceDifferentiableConstraints(con_c!, con_jacobian!, con_h!,low,upp, lc, uc)
-
-res = optimize(df, dfc, z00, IPNewton(show_linesearch = true), 
-    Optim.Options(
-                    g_tol = 1e-12,
-                    x_tol = 1e-12,
-                    f_tol = 1e-12,
-                    allow_f_increases = true,
-                    successive_f_tol = 5,
-                    show_trace = true,
-                    iterations=100
-                  )
-                )
-
-zsol = res.minimizer;
-c_quad(zsol,p_dense)
-c_lin(zsol,p_dense)
-c_p(zsol,p_dense,x0)
-
-
-z00=low + (upp-low)/2
-sol_NM = optimize(fun, z0, NelderMead())
-sol_LBFGS = optimize(fun, z0, LBFGS())
-sol_LBFGSad =optimize(fun, z0, LBFGS(); autodiff = :forward)
-sol_SAMIN =optimize(fun, low,upp,z00, SAMIN())
-
-
-df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z00)
-dfc = TwiceDifferentiableConstraints(low, upp)
-
-res = optimize(df, dfc, z00, IPNewton(), 
-    Optim.Options(
-                    g_tol = 1e-12
-                  )
-                )
-
-
-#######################NLPModelsIpopt.jl###################################
-
-using ADNLPModels, NLPModels, NLPModelsIpopt
-
-
-nlp = ADNLPModel(fun,z00,low,upp,con_c!, lc, uc)
-fx = obj(nlp, nlp.meta.x0)
-gx = grad(nlp, nlp.meta.x0)
-Hx = hess(nlp, nlp.meta.x0)
-
-##########################################################
-
-
-include("NU2_preamble.jl")
-
-f = eval(NonLinProbPrecompile.f_noeval_good[1])
-f_num = eval(NonLinProbPrecompileNum.f_noeval_num[1])
-@variables z[1:M]
-# @parameters p[1:P]
-# f_expr = f(z,p)
-# eq = 0 .~ f(z,p)
-p=[]
-f_expr = f_num(z,p)
-eq = 0 .~ f_expr
-#p0 = p_dense
-# ns = NonlinearSystem(eq,z,p; name=:random_name, defaults=merge(Dict(vcat(z) .=> z0),Dict(vcat(p) .=> p0)) ) 
-ns = NonlinearSystem(eq,z,p)
-# prob_ns = NonlinearProblem(ns,z0,p0; check_length=false,jac = true, sparse=true,checkbounds = false, linenumbers = false) 
-#prob_ns = NonlinearProblem(ns,z0,p0; check_length=false)
-# NonlinearFunction(ns,z0,p0)
-@show states(ns);
-@show parameters(ns);
-
-
-sys_num = generate_function(ns) 
-sys_sym = generate_function(ns,z,p) 
-jac_num = generate_jacobian(ns, sparse=true, skipzeros=false)
-jac_sym = generate_jacobian(ns,z,p) 
-jac_sym_sp = Symbolics.sparsejacobian(f_expr,states(ns))
-hess_sym = ModelingToolkit.hessian(f_expr[1],states(ns); simplify=true) # hessian of 1st equation in f_expr
-hess_num = build_function(hess_sym, states(ns); expression = false, target = Symbolics.JuliaTarget())
-
-Q = 2N+1+N*mini_batch #number of constraints
-@variables λ[1:Q]
-[λ[i]*ModelingToolkit.hessian(f_expr[i],states(ns); simplify=true) for i=1:Q]
-
-hv_sym = 
-
-sn = @eval eval(sys_num[1])
-sn_iip = @eval eval(sys_num[2])
-ss = @eval eval(sys_sym[1])
-
-jn = @eval eval(jac_num[1])
-jn_iip = @eval eval(jac_num[2])
-js = @eval eval(jac_sym[1])
-js_iip = @eval eval(jac_sym[2])
-js_sp = jac_sym_sp
-
-hn = @eval eval(hess_num[1])
-hn_iip = @eval eval(hess_num[2])
-hs = @eval eval(hess_sym)
-
-
-p0=Float64[];
-@show sn(z0,p0)
-@show ss(z,p)
-@show jn(z0,p0)
-@show js(z,p)
-@show js_sp
-@show hn(z0,p0)
-@show hs
-
-sn_z0 = zeros(length(eq)) 
-jn_z0 = spzeros(length(eq),length(z0)) 
-hn_z0 = spzeros(length(z0),length(z0)) 
-@show sn_iip(sn_z0,z0,p0)
-@show jn_iip(jn_z0,z0,p0)
-@show hn_iip(hn_z0,z0,p0)
-
-@show sn_z0
-@show jn_z0
-@show hn_z0
-
-
-fun(z) =  0.0
-function fun_grad!(g, x)
-    g .= zeros(length(x))
-end
-function fun_hess!(h, x)
-    h .= zeros(length(x),length(x))
-end
-df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, z0)
-
-con_c!(c, x) = sn_iip(c,x,[])
-function con_jacobian!(J, x)
-    jn_iip(J, x,[])
-    return J
-end
-function con_h!(h, x, λ)
-    h[1,1] += λ[1]*2
-    h[2,2] += λ[1]*2
-end;
 
 
 
-f_optim(z) = sn(z,p0)
-optimize(f_optim, z0, NelderMead())
-optimize(f_optim, z0, LBFGS())
-optimize(f_optim, z0, LBFGS(); autodiff = :forward)
-g!(G, x) = 
-
-
-inner_optimizer = GradientDescent()
-results = optimize((x)->sn(x,p0), low, upp, (upp-low)/2+low, Fminbox(inner_optimizer), autodiff = :forward)
-
-nlsolve((F,x)->sn_iip(F,x,p0), z0, autodiff = :forward)
-nlsolve((F,x)->sn_iip(F,x,p0), (F,x)->jn_iip(F,x,p0), z0)
-
-
-######################################
-c_lin(z0,p0)
-c_quad(z0,p0)
-c_chance(z0,p0)
-_c(z0,p0)
-
-c_p(z0,p0,x0)
-_c(z0,p0,x0)
-
-contraction(z0,p0,x0)
-p1=p_contraction(z0, p0, x0, 10)
-p2=p_nlsolve(z0,p0,x0)
-p1 ≈ p2
-
-
-obj(z0,p0)
-obj_contraction(z0,p0,x0)
-obj_nlsolve(z0,p0,x0)
-α,β= selα*z0,selβ*z0
-betaprod_pdf(x0,α,β)
-betaprod_density(x0,α,β)
-dx0=zeros(1,mini_batch)
-int_nlsolve!(dx0,x0,vcat(z0,p0))
-int_cont!(dx0,x0,vcat(z0,p0))
-int_nlsolve(x0,vcat(z0,p0))
-int_cont(x0,vcat(z0,p0))
-obj_nlsolve_int(z0,p0)
-obj_cont_int(z0,p0)
-obj_nlsolve_intH(z0,p0)
-obj_cont_intH(z0,p0)
-
-obj_full(obj(z0,p0),p0)
-obj_full(obj_contraction(z0,p0,x0),p0)
-obj_full(obj_nlsolve(z0,p0,x0),p0)
 
 # integrate by drawing x
 dist_uni = Distributions.Product(Distributions.Uniform.(zeros(size(α)),ones(size(β))))
@@ -558,148 +373,9 @@ FiniteDiff.finite_difference_gradient(testf,p0)
 @test_skip FiniteDiff.finite_difference_jacobian(x->ForwardDiff.gradient(testf,x),p0)
 @test_skip FiniteDiff.finite_difference_jacobian(x->Zygote.gradient(testf,x)[1],p0)
 
-## modling toolkit
-using SparsityDetection, SparseArrays
-input = rand(10)
-output = similar(input)
-sparsity_pattern = jacobian_sparsity(f,output,input)
-jac = Float64.(sparse(sparsity_pattern))
-using SparseDiffTools
-colors = matrix_colors(jac)
-using FiniteDiff
-FiniteDiff.finite_difference_jacobian!(jac, f, rand(30), colorvec=colors)
-@show fcalls # 5
-forwarddiff_color_jacobian!(jac, f, x, colorvec = colors)
 
 
 
-## Modeling Toolkit      #https://github.com/JuliaStats/StatsFuns.jl/tree/an/nopdf
-
-module NonLinProbPrecompile
-    using ModelingToolkit, LinearAlgebra
-
-    function system(; kwargs...)
-        # Define some variables
-        M = 50;P=3031;x0=ones(M)/10;
-    
-        @variables z[1:M]
-        @parameters p[1:P]
-        zcat = vcat(z...);
-        pcat = vcat(p...);
-        # Define a system of nonlinear equations
-        ceq = vcat(
-            0 .~ c_lin(zcat,pcat),
-            0  ~ c_quad(zcat,pcat) ,
-            0 .~ c_p(zcat,pcat,x0)
-          )
-        ns = NonlinearSystem(ceq,z,p)
-        return generate_function(ns,z,p)
-    end
-    # Setting eval_expression=false and eval_module=[this module] will ensure
-    # the RGFs are put into our own cache, initialised below.
-    using RuntimeGeneratedFunctions
-    RuntimeGeneratedFunctions.init(@__MODULE__)
-    const f_noeval_good = system(; eval_expression=false, eval_module=@__MODULE__)
-end
-
-f = eval(Main.NonLinProbPrecompile.f_noeval_good[1])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function c_quad(z::Symbolics.Arr{Num},p::Symbolics.Arr{Num})
-    H  = reshape(p[6N+2+2N*M:6N+1+2N*M+M^2],M,M)
-    return dot(z,Symbolics.scalarize(H*z)) #transpose(z)*H*z
-end
-
-@variables z[1:M]
-@parameters p[1:P]
-zcat = vcat(z...);
-pcat = vcat(p...);
-
-ceq = vcat(
-        0 .~ c_lin(zcat,pcat),
-        0  ~ c_quad(zcat,pcat) ,
-        0 .~ c_p(zcat,pcat,x0)
-      )
-
-loss = Symbolics.scalarize(Symbolics.scalarize(sum(selp*zcat)) + Symbolics.scalarize(sum(Symbolics.scalarize(selc*zcat).*x0)) )
-sys = OptimizationSystem(loss,z,p; equality_constraints=ceq)
-u0 = zcat .=> z0
-p0 = pcat .=> p_dense
-prob = OptimizationProblem(sys,u0,p0,grad=true,hess=true)  #
-sol = solve(prob,IPNewton())
-
-#@test ModelingToolkit.varmap_to_vars(u0,states(ns); defaults=ModelingToolkit.defaults(ns))==z0
-
-ns = NonlinearSystem(ceq,z,p)
-prob_ns = NonlinearProblem(ns,z0,p_dense; check_length=false)#check_length=false
-sol_ns = solve(prob_ns,NewtonRaphson())
-
-@variables z[1:2]
-@parameters p[1:2]
-ceq = [0 ~ z[1],0 ~ Symbolics.scalarize(cl[1])]
-ns = NonlinearSystem(ceq,z,p)
-z00=[2.2,2.3]
-p00=[2.2,2.3]
-prob_ns = NonlinearProblem(ns,z00,p00)
-sol_ns = solve(prob_ns,NewtonRaphson())
-
-
-
-
-nlsys_func = generate_function(ns, [x,y,z], [σ,ρ,β])
-jac_func = generate_jacobian(ns)
-f = @eval eval(nlsys_func)
-Symbolics.jacobian(equations(ns),states(ns))
-calculate_jacobian(ns)
-f = eval(generate_function(ns, [x,y,z], [σ,ρ,β])[2])
-cJ=generate_gradient(sys; parallel=Symbolics.MultithreadedForm())
-nlsys_func = generate_function(ns, [x,y,z], [σ,ρ,β])
-jac_func = generate_jacobian(ns)
-f = @eval eval(nlsys_func)
-calculate_hessian
-
-generate_hessian
-hessian_sparsity
-    jacobian_sparsity
-    Joop, Jiip = eval.(generate_gradient(sys))
-    
-    multithreadedf = eval(ModelingToolkit.build_function(du,u,fillzeros=true,
-                      parallel=ModelingToolkit.MultithreadedForm())[2])
-
-#Joop(vars,params)
-Joop(map(x->x[2],u0),map(x->x[2],p))
-calculate_gradient(sys)
-
-# define derivatives
-f(x) = 2x + x^2
-@register f(x)
-function ModelingToolkit.derivative(::typeof(f), args::NTuple{1,Any}, ::Val{1})
-    2 + 2args[1]
-end
-expand_derivatives(Dx(f(x)))
-
-beta_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x)
-function c_chance(z,p)
-    c, α, β = selc*z, selα*z, selβ*z
-    w, delta = p[1:N], p[2N+1:3N]
-    zeroz = zero(z[1])+0.0001
-    onez = one(z[1])-0.0001
-    return beta_ccdf.(α,β,max.(min.(w./c,onez),zeroz) ) .- delta
-end
 
 ## JuMP
 using JuMP, Ipopt
@@ -778,64 +454,21 @@ end
 
 
 ## NLP Models
-using NLPModels, ADNLPModels, NLPModelsIpopt, ReverseDiff, NLPModelsModifiers
-nc = length(_c(z0,p0) )
-nlp = ADNLPModel(z->obj_cont_int(z,p0), z0, low, upp, z->_c(z,p0), zeros(nc), zeros(nc); lin=1:2N) #  adbackend = ADNLPModels.ReverseDiffAD()  adbackend = ADNLPModels.ZygoteAD() ; lin=1:2N)
-obj(nlp,nlp.meta.x0)
-gx = grad(nlp, nlp.meta.x0)
+using NLPModelsModifiers
 nlpLBFGS=NLPModelsModifiers.LBFGSModel(nlp)
-
-function hess(nlp::AbstractNLPModel, x::AbstractVector; obj_weight::Real = one(eltype(x)))
-  @lencheck nlp.meta.nvar x
-  rows, cols = hess_structure(nlp)
-  vals = hess_coord(nlp, x, obj_weight = obj_weight)
-  Symmetric(sparse(FiniteDiff.finite_difference_hessian(x->obj(nlp,x),x)), :L)
-end
-
-hess(nlpLBFGS,z0)
-
-
-Hx = hess(nlp, nlp.meta.x0)
-
-obj(nlp, nlp.meta.x0) # evaluate the objective value at x0
-grad!(nlp, nlp.meta.x0, g) # evaluate the objective gradient at x0
-cons!(nlp, nlp.meta.x0, c) # evaluate the vector of constraints at x0
-
-
-jac_structure!(nlp, rows, cols): fill rows and cols with the spartity structure of the Jacobian, if the problem is constrained;
-jac_coord!(nlp, nlp.meta.x0, vals): fill vals with the Jacobian values corresponding to the sparsity structure returned by jac_structure!();
-hess_structure!(nlp, rows, cols): fill rows and cols with the spartity structure of the lower triangle of the Hessian of the Lagrangian;
-hess_coord!(nlp, x, y, vals; obj_weight=1.0): fill vals with the values of the Hessian of the Lagrangian corresponding to the sparsity structure returned by hess_structure!(), where obj_weight is the weight assigned to the objective, and y is the vector of multipliers.
-
-stats = ipopt(nlpLBFGS)
-print(stats)
-problem = createProblem(n, nlp.meta.lvar, nlp.meta.uvar,
-m, nlp.meta.lcon, nlp.meta.ucon,
-nlp.meta.nnzj, nlp.meta.nnzh,
-eval_f, eval_g, eval_grad_f,
-eval_jac_g);#, eval_h)
-
-
+statsLBFGS = ipopt(nlpLBFGS)
+print(statsLBFGS)
 
 using DCISolver, ADNLPModels, Logging
-
-
-grad(nlp,z0) == ForwardDiff.gradient(z->obj_cont_int(z,p0),z0)
-dci(nlp, nlp.meta.x0)
-
-stats = with_logger(NullLogger()) do
+statsDCI = with_logger(NullLogger()) do
   dci(nlp, nlp.meta.x0)
 end
 
 println(stats)
 
 
-
-
 Pkg.add(url="https://github.com/JuliaSmoothOptimizers/NCL.jl", rev="master")
-using NLPModelsIpopt, NCL
-nlp = ADNLPModel(z->obj_cont_int(z,p0), z0, low, upp, z->_c(z,p0), zeros(nc), ones(nc)) # adbackend = ADNLPModels.ZygoteAD() ; lin=1:2N)
-
+using NCL
 ncl_nlin_res = NCLModel(nlp)
 NCLSolve(ncl_nlin_res)
 
@@ -846,20 +479,10 @@ NCLSolve(ncl_nlin_res)
 
 
 
-# end #module
-
-
-
 using PolyChaos
 N=5
 α=ones(N);β=2.0*ones(N);
 mop = MultiOrthoPoly([ Beta01OrthoPoly(5, α[i],β[i]) for i in 1:N])
-
-
-
-
-
-
 
 import Pkg; Pkg.add("SparseGrids");Pkg.add("FastGaussQuadrature");Pkg.add("PolyChaos")
 using SparseGrids, FastGaussQuadrature, PolyChaos
@@ -904,11 +527,6 @@ function Quad(N::Int, measure::AbstractMeasure; quadrature::Function=clenshaw_cu
     typeof(measure) != Measure && @warn "For measures of type $(typeof(measure)) the quadrature rule should be based on the recurrence coefficients."
     Quad(N, measure.w, (measure.dom[1], measure.dom[2]); quadrature=quadrature)
 end
-
-
-
-
-
 
 
 Tensor(2,mop)
@@ -1263,3 +881,28 @@ structural_simplify(ns)
 ns
     
     
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+ 
+eq_chance = eq[end-4:end]
+eq_chance1 = eq[end-4:end-4]
+ns_chance1 = NonlinearSystem(eq_chance1,vcat(z[31],z[36],z[41]),p)
+
+chance1_num = generate_function(ns_chance1) 
+c1n = @eval eval(chance1_num[1])
+c1n_iip = @eval eval(chance1_num[2])
+
+c1n([0.1,0.3,2*NetDefs.w[1]],[])
+c1b_nls(x,p)=c1b_nls(x,[])
+using NLsolve
+nlsolve(x->c1n(vcat(x[1],x[2],2*NetDefs.w[1]),[]),[0.1,0.3])
+
+c1n([0.07195479766270048, 0.2724808617917982,2*NetDefs.w[1]],[])

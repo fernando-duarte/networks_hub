@@ -36,11 +36,12 @@ module NonLinProbPrecompileNum
         @variables z[1:M]
         zcat = vcat(z...);
         # Define a system of nonlinear equations
+        p0A = Array(p0)
         ceq = vcat(
-            0 .~ c_lin(zcat,p_dense),
-            0  ~ c_quad(zcat,p_dense),
-            0 .~ c_p(zcat,p_dense,x0),
-            0 .~ c_chance(zcat,p_dense)
+            0 .~ c_lin(zcat,p0A),
+            0  ~ c_quad(zcat,p0A),
+            0 .~ c_p(zcat,p0A,x0),
+            0 .~ c_chance(zcat,p0A)
           )
         ns = NonlinearSystem(ceq,z,[])
         return generate_function(ns,z,[])
@@ -61,7 +62,8 @@ module NonLinProbPrecompileObj
         @variables z[1:M]
         zcat = vcat(z...);
         # Define a system of nonlinear equations
-        loss = obj(zcat,p_dense)
+        p0A = Array(p0)
+        loss = obj(zcat,p0A)
         opt = OptimizationSystem(loss,z,[])
         return generate_function(opt,z,[])
     end
@@ -69,4 +71,26 @@ module NonLinProbPrecompileObj
     # the RGFs are put into our own cache, initialised below.   
     RuntimeGeneratedFunctions.init(@__MODULE__)
     const f_noeval_obj = system(; eval_expression=false, eval_module=@__MODULE__)
+end #module
+
+
+module NonLinProbPrecompileContraction
+    #include("NetworkType.jl");using .NetworkType
+    include("NetDefs.jl"); using .NetDefs
+    using ModelingToolkit, LinearAlgebra, RuntimeGeneratedFunctions
+    export f_noeval_contraction
+    function system(; kwargs...)
+        # Define some variables
+        @variables z[1:M]
+        zcat = vcat(z...);
+        # Define a system of nonlinear equations
+        p0A = Array(p0)
+        cont = contraction(zcat,p0A,x0)
+        opt = OptimizationSystem(cont,z,[])
+        return generate_function(opt,z,[])
+    end
+    # Setting eval_expression=false and eval_module=[this module] will ensure
+    # the RGFs are put into our own cache, initialised below.   
+    RuntimeGeneratedFunctions.init(@__MODULE__)
+    const f_noeval_contraction = system(; eval_expression=false, eval_module=@__MODULE__)
 end #module
