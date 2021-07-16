@@ -19,7 +19,7 @@ using .NetworkUtils
 # User Inputs
 T=Float32
 N = 5 #number of points
-Q = 200000 #number of samples - size(train) = Q/2 size(test) = Q/2
+Q = 100000 #number of samples - size(train) = Q/2 size(test) = Q/2
 max_iter = 2*Q
 dates=[Date(QuarterlyDate("2008-Q4"))]
 
@@ -92,7 +92,6 @@ A_in_orig = mod(Q,2)==0 ? gen_A(N,halfQ) : gen_A(N,halfQ+1)
 A_in_alt = NetworkUtils.trainingSetA(N,sample_size=halfQ,max_iter=max_iter,con="netting") # N=5 nodes, can use for training NN
 A_in = hcat(A_in_orig,hcat(reshape.(A_in_alt,N^2)...))
 
-
 # Making c
 function gen_c(N,Q)
     c_in = zeros(N,Q)
@@ -130,6 +129,10 @@ function p_func(x, p_bar, A, c)
   return sol.zero; # the solution to the system
 end
 
+function p_func_true(x)
+    sum(p_func(x[N*N+2*N+1:end],p_bar,reshape(collect(x[1:N*N]), (N,N)),x[N*N+N+1:N*N+2*N]))
+end
+
 ## Training NN
 m = Int(Q÷2) #number of observations in test set
 x_train = vcat(A_in, b_in, c_in, x_in) #order is A, b,c,x
@@ -139,32 +142,35 @@ x_train = x_train[:,m+1:end]
 y_train = zeros(1,Q-m)
 y_test = zeros(1,m)
 for i = 1:Q-m
-    y_train[i] = sum(p_func(x_train[N*N+2*N+1:end,i],p_bar,reshape(x_train[1:N*N,i], (N,N)),x_train[N*N+N+1:N*N+2*N,i]))  #x, p_bar, A, c
+    y_train[i] = p_func_true(x_train[:,i])
 end
 for i = 1:m
-    y_test[i] = sum(p_func(x_test[N*N+2*N+1:end,i],p_bar,reshape(x_test[1:N*N,i], (N,N)),x_test[N*N+N+1:N*N+2*N,i]))
+    y_test[i] = p_func_true(x_test[:,i])
 end
 
 loss(x,y) = mean((model(x).-y).^2)
-model = gpu(Chain(Dense(N*N+3*N, N*3, σ), Dense(N*3,N*2,σ), Dense(N*2, N*2, σ), Dense(N*2,N*2,σ),Dense(N*2,N*2,σ), Dense(N*2,N,σ),Dense(N,N,σ), Dense(N, 1)))
-#@load "clearing_p_NN_gpu_sum_N$N.bson" model
 x_train = gpu(x_train)
 y_train = gpu(y_train) 
 x_test = gpu(x_test)
 y_test = gpu(y_test) 
 
+model = gpu(Chain(Dense(N*N+3*N, N^2, σ), Dense(N^2,N*3,σ), Dense(N*3,N*2,σ), Dense(N*2, N*2, σ), Dense(N*2,N*2,σ),Dense(N*2,N*2,σ), Dense(N*2,N,σ),Dense(N,N,σ), Dense(N, 1)))
 ps = Flux.params(model)
 train_loader = gpu(DataLoader((x_train, y_train), batchsize=500, shuffle=true))
 
-# Choosing Gradient Descent option
-opt = ADAM(0.001, (0.9, 0.8))
-
 ## Setting up Call backs
-evalcb() = @show(loss(x_test,y_test))
+evalcb() = @show(loss(x_train,y_train), loss(x_test,y_test))
 init_loss = loss(x_test,y_test)
 
 ## Training
-Flux.@epochs 3000 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+opt = ADAM(0.01, (0.9, 0.8))
+Flux.@epochs 100 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+opt = ADAM(0.001, (0.9, 0.8))
+Flux.@epochs 500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+opt = ADAM(0.0001, (0.9, 0.8))
+Flux.@epochs 100 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+opt = ADAM(0.00005, (0.9, 0.8))
+Flux.@epochs 100 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 
 model = cpu(model)
 @save "clearing_p_NN_gpu_sum_N$N.bson" model
