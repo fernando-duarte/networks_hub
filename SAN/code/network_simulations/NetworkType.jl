@@ -11,7 +11,7 @@ using MathOptInterface
 const MOI = MathOptInterface
 include("IncBetaDer.jl")
 
-export Network, netEmp, plot, constrA, solve_constrA, constrβ, solve_constrβ, roundNet
+export Network, netEmp, plot, constrA, solve_constrA, constrβ, solve_constrβ, roundNet, toJuliaDates
 
 # α=2.0; β=3.0;
 # m= MeasureTheory.Beta(α, β)

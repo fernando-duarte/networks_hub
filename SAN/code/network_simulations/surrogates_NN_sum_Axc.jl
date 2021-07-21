@@ -19,7 +19,7 @@ using .NetworkUtils
 # User Inputs
 T=Float32
 N = 5 #number of points
-Q = 100000 #number of samples - size(train) = Q/2 size(test) = Q/2
+Q = 500000 #number of samples - size(train) = Q/2 size(test) = Q/2
 max_iter = 2*Q
 dates=[Date(QuarterlyDate("2008-Q4"))]
 
@@ -154,7 +154,9 @@ y_train = gpu(y_train)
 x_test = gpu(x_test)
 y_test = gpu(y_test) 
 
-model = gpu(Chain(Dense(N*N+3*N, N^2, σ), Dense(N^2,N*3,σ), Dense(N*3,N*2,σ), Dense(N*2, N*2, σ), Dense(N*2,N*2,σ),Dense(N*2,N*2,σ), Dense(N*2,N,σ),Dense(N,N,σ), Dense(N, 1)))
+@load "clearing_p_NN_gpu_sum_N$N.bson" model
+model = gpu(model)
+#model = gpu(Chain(Dense(N*N+3*N, N^2, σ), Dense(N^2,N*3,σ), Dense(N*3,N*2,σ), Dense(N*2, N*2, σ), Dense(N*2,N*2,σ),Dense(N*2,N*2,σ), Dense(N*2,N,σ),Dense(N,N,σ), Dense(N, 1)))
 ps = Flux.params(model)
 train_loader = gpu(DataLoader((x_train, y_train), batchsize=500, shuffle=true))
 
@@ -164,13 +166,13 @@ init_loss = loss(x_test,y_test)
 
 ## Training
 opt = ADAM(0.01, (0.9, 0.8))
-Flux.@epochs 100 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
-opt = ADAM(0.001, (0.9, 0.8))
 Flux.@epochs 500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+opt = ADAM(0.001, (0.9, 0.8))
+Flux.@epochs 1500 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 opt = ADAM(0.0001, (0.9, 0.8))
-Flux.@epochs 100 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+Flux.@epochs 1000 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 opt = ADAM(0.00005, (0.9, 0.8))
-Flux.@epochs 100 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
+Flux.@epochs 1000 Flux.train!(loss, ps, ncycle(train_loader, 5), opt, cb  = throttle(evalcb,150))
 
 model = cpu(model)
 @save "clearing_p_NN_gpu_sum_N$N.bson" model
