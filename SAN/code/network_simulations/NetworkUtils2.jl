@@ -1,19 +1,12 @@
 include("NU2_preamble.jl")
 
-#### test contraction ####
-f_cont = eval(NonLinProbPrecompileContraction.f_noeval_contraction[1])
-@variables z[1:M]
-p=[]
-f_cont_sym = f_cont(z,p)
-
-##############
-
 f = eval(NonLinProbPrecompile.f_noeval_good[1])
 f_num = eval(NonLinProbPrecompileNum.f_noeval_num[1])
-f_obj = eval(NonLinProbPrecompileObj.f_noeval_obj)
-@variables z[1:M]
+f_obj =  eval(NonLinProbPrecompileContraction.f_noeval_contraction) #eval(NonLinProbPrecompileObj.f_noeval_obj)
+Mp = M
+@variables z[1:Mp]
 p=[]
-obj_expr = f_obj(z,p)
+obj_expr = f_obj(z,p) # f_obj(z,p)
 f_expr = f_num(z,p)
 Q = length(f_expr) # number of constraints
 eq = 0 .~ f_expr
@@ -36,37 +29,38 @@ sn = @eval eval(sys_num[1])
 sn_iip = @eval eval(sys_num[2])
 jn = @eval eval(jac_num[1])
 js_iip = @eval eval(jac_sym[2])
-@show on(z0,[])
-@show gn(z0,[])
-@show sn(z0,[])
-@show jn(z0,[])
+# @show on(z0,[])
+# @show gn(z0,[])
+# @show sn(z0,[])
+# @show jn(z0,[])
 
-gn_z0 = zeros(length(z0)) 
-sn_z0 = zeros(length(eq)) 
-jn_z0 = spzeros(length(eq),length(z0)) 
-@show gn_iip(gn_z0,z0,[])
-@show sn_iip(sn_z0,z0,[])
-@show js_iip(jn_z0,z0,[])
-@show gn_z0
-@show sn_z0
-@show jn_z0
+# gn_z0 = zeros(length(z0)) 
+# sn_z0 = zeros(length(eq)) 
+# jn_z0 = spzeros(length(eq),length(z0)) 
+# @show gn_iip(gn_z0,z0,[])
+# @show sn_iip(sn_z0,z0,[])
+# @show js_iip(jn_z0,z0,[])
+# @show gn_z0
+# @show sn_z0
+# @show jn_z0
 
-@show jac_sp = ModelingToolkit.jacobian_sparsity(ns);
-@show jac_sp.colptr;
-@show jac_sp.rowval;
+jac_sp = ModelingToolkit.jacobian_sparsity(ns);
+# @show jac_sp
+# @show jac_sp.colptr;
+# @show jac_sp.rowval;
 
 jac_nzval = calculate_jacobian(ns)[jac_sp]
 jac_nzval_num = build_function(jac_nzval,z) 
 jac_nzval_oop = @eval eval(jac_nzval_num[1])
 jac_nzval_iip = @eval eval(jac_nzval_num[2])
-jac_nzval0 = spzeros(nnz(jac_sp)) 
-jac_nzval_oop(z0)
-jac_nzval_iip(jac_nzval0,z0)
-@show jac_nzval0
+# jac_nzval0 = spzeros(nnz(jac_sp)) 
+# jac_nzval_oop(z0)
+# jac_nzval_iip(jac_nzval0,z0)
+# @show jac_nzval0
 
 rows_jac_sp = jac_sp.rowval
-cols_jac_sp = vcat([fill(j,length(nzrange(jac_sp,j))) for j=1:M]...)
-@test sparse(rows_jac_sp,cols_jac_sp,true,Q,M)==jac_sp
+cols_jac_sp = vcat([fill(j,length(nzrange(jac_sp,j))) for j=1:Mp]...)
+# @test sparse(rows_jac_sp,cols_jac_sp,true,Q,Mp)==jac_sp
 
 # sparsity pattern of the Lagrangian's hessian
 for i=1:Q
@@ -79,13 +73,13 @@ lag =  σ * obj_expr + dot(f_expr,λvec)
 temp_sp = OptimizationSystem(lag,z,vcat(λvec...,σ))
 hess_sp = ModelingToolkit.hessian_sparsity(temp_sp)
 rows_hess_sp_full = hess_sp.rowval
-cols_hess_sp_full = vcat([fill(j,length(nzrange(hess_sp,j))) for j=1:M]...)
-@test sparse(rows_hess_sp_full,cols_hess_sp_full,true,M,M)==hess_sp
+cols_hess_sp_full = vcat([fill(j,length(nzrange(hess_sp,j))) for j=1:Mp]...)
+# @test sparse(rows_hess_sp_full,cols_hess_sp_full,true,Mp,Mp)==hess_sp
 
 hess_sp_lt = sparse(LowerTriangular(Array(hess_sp)))
 rows_hess_sp = hess_sp_lt.rowval
-cols_hess_sp = vcat([fill(j,length(nzrange(hess_sp_lt,j))) for j=1:M]...)
-@test Symmetric(sparse(rows_hess_sp,cols_hess_sp,true,M,M),:L)==hess_sp
+cols_hess_sp = vcat([fill(j,length(nzrange(hess_sp_lt,j))) for j=1:Mp]...)
+# @test Symmetric(sparse(rows_hess_sp,cols_hess_sp,true,Mp,Mp),:L)==hess_sp
 
 ##
 @parameters λ[1:Q] σ
@@ -94,64 +88,64 @@ hess_λ = σ * hess_obj_sym + sum(λ[i]*hess_sym(i) for i=1:Q)
 hess_num = build_function(hess_λ,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
 hess_oop = @eval eval(hess_num[1])
 hess_iip = @eval eval(hess_num[2])
-hess_z0 = spzeros(length(z0),length(z0)) 
-λ0 = ones(Q)
-σ0 = 1.0
-hess_oop(z0,λ0,σ0)
-hess_iip(hess_z0,z0,λ0,σ0)
-@show hess_z0
+# hess_z0 = spzeros(length(z0),length(z0)) 
+# λ0 = ones(Q)
+# σ0 = 1.0
+# hess_oop(z0,λ0,σ0)
+# hess_iip(hess_z0,z0,λ0,σ0)
+# @show hess_z0
 ##
 
 hess_λ_nzval = hess_λ[hess_sp_lt]
 hess_λ_nzval_num = build_function(hess_λ_nzval,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
 hess_λ_nzval_oop = @eval eval(hess_λ_nzval_num[1])
 hess_λ_nzval_iip = @eval eval(hess_λ_nzval_num[2])
-hess_λ_nzval0 = spzeros(nnz(hess_sp_lt)) 
-λ0 = ones(Q)
-σ0 = 1.0
-hess_λ_nzval_oop(z0,λ0,σ0)
-hess_λ_nzval_iip(hess_λ_nzval0,z0,λ0,σ0)
-@show hess_λ_nzval0
+# hess_λ_nzval0 = spzeros(nnz(hess_sp_lt)) 
+# λ0 = ones(Q)
+# σ0 = 1.0
+# hess_λ_nzval_oop(z0,λ0,σ0)
+# hess_λ_nzval_iip(hess_λ_nzval0,z0,λ0,σ0)
+# @show hess_λ_nzval0
 
 hess_σ = σ * hess_obj_sym
 hess_σ_num = build_function(hess_σ,z,σ)
 hess_σ_oop = @eval eval(hess_σ_num[1])
 hess_σ_iip = @eval eval(hess_σ_num[2])
-hess_σ_z0 = spzeros(length(z0),length(z0)) 
-σ0 = 1.0
-hess_σ_oop(z0,σ0)
-hess_σ_iip(hess_σ_z0,z0,σ0)
-@show hess_σ_z0
+# hess_σ_z0 = spzeros(length(z0),length(z0)) 
+# σ0 = 1.0
+# hess_σ_oop(z0,σ0)
+# hess_σ_iip(hess_σ_z0,z0,σ0)
+# @show hess_σ_z0
 
 hess_σ_nzval = hess_σ[hess_sp_lt]
 hess_σ_nzval_num = build_function(hess_σ_nzval,z,σ) 
 hess_σ_nzval_oop = @eval eval(hess_σ_nzval_num[1])
 hess_σ_nzval_iip = @eval eval(hess_σ_nzval_num[2])
-hess_σ_nzval0 = spzeros(nnz(hess_sp_lt)) 
-σ0 = 1.0
-hess_σ_nzval_oop(z0,σ0)
-hess_σ_nzval_iip(hess_σ_nzval0,z0,σ0)
-@show hess_σ_nzval0
+# hess_σ_nzval0 = spzeros(nnz(hess_sp_lt)) 
+# σ0 = 1.0
+# hess_σ_nzval_oop(z0,σ0)
+# hess_σ_nzval_iip(hess_σ_nzval0,z0,σ0)
+# @show hess_σ_nzval0
 
-@parameters v[1:M]
+@parameters v[1:Mp]
 v_cat = vcat(v...)
 Hv_sym = hess_λ*v_cat
 Hv_num = build_function(Hv_sym,z,λ,v,σ)
 Hv_oop = @eval eval(Hv_num[1])
 Hv_iip = @eval eval(Hv_num[2])
-Hv0 = spzeros(M) 
-v0 = ones(M)
-Hv_oop(z0,λ0,v0,σ0)
-Hv_iip(Hv0,z0,λ0,v0,σ0)
-@show Hv0
-@test Array(Hv0)==Hv_oop(z0,λ0,v0,σ0)
+# Hv0 = spzeros(Mp) 
+# v0 = ones(Mp)
+# Hv_oop(z0,λ0,v0,σ0)
+# Hv_iip(Hv0,z0,λ0,v0,σ0)
+# @show Hv0
+# @test Array(Hv0)==Hv_oop(z0,λ0,v0,σ0)
 
 
 lagrangian_sym = σ * obj_expr + sum(λ[i]*f_expr[i] for i=1:Q) 
 lagrangian_num = build_function(lagrangian_sym,z,λ,σ) 
 lagrangian_oop = @eval eval(lagrangian_num)
-lagrangian0 = 0.0
-lagrangian_oop(z0,λ0,σ0)
+# lagrangian0 = 0.0
+# lagrangian_oop(z0,λ0,σ0)
 
 
 ############################
@@ -210,8 +204,8 @@ jac5 = sparse(Zygote.jacobian(z->__c(z,p0A,x0),z0)[1])
 
 rr_h, cc_h = NLPModels.hess_structure!(nlp,hess_rows,hess_cols)
 vv_h = NLPModels.hess_coord!(nlp,z0,hess_vals;obj_weight=1)
-hess1 = Array(Symmetric(sparse(rr_h,cc_h,vv_h,M,M),:L))
-hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,M,M),:L))
+hess1 = Array(Symmetric(sparse(rr_h,cc_h,vv_h,Mp,Mp),:L))
+hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,Mp,Mp),:L))
 hess3 = FiniteDiff.finite_difference_hessian(z->NLPModels.obj(nlp,z),z0)
 hess4 = FiniteDiff.finite_difference_hessian(z->NetDefs.obj(z,p0),z0)
 pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>0.0,σ=>1.0)))
@@ -238,8 +232,8 @@ end
 
 lambda0 = ones(Q)
 vv_h = NLPModels.hess_coord!(nlp,z0,lambda0,hess_vals;obj_weight=1)
-hess1 = Array(Symmetric(sparse(rr_h,cc_h,vv_h,M,M),:L))
-hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,M,M),:L))
+hess1 = Array(Symmetric(sparse(rr_h,cc_h,vv_h,Mp,Mp),:L))
+hess2 = Array(Symmetric(sparse(hess_rows,hess_cols,hess_vals,Mp,Mp),:L))
 hess3 = FiniteDiff.finite_difference_hessian(z->lagrangian_oop(z,lambda0,1.0),z0)
 pmap = Dict(Symbolics.scalarize(vcat(z.=>z0,λ.=>lambda0,σ=>1.0)))
 hess4 = Symbolics.value.(map(x->substitute(x,pmap),hess_λ))
