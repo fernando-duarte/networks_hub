@@ -1,8 +1,17 @@
 include("NU2_preamble.jl")
 
+# NonLinProbPrecompile.f_noeval_good
+# NonLinProbPrecompileNum.f_noeval_num
+# NonLinProbPrecompileContractionQuadUnif.f_noeval_contraction_quaduniform
+# NonLinProbPrecompileSumpContraction.f_noeval_sump_contraction
+# PrecompileExtpow.f_noeval_extpow_prod_pdf
+
 f = eval(NonLinProbPrecompile.f_noeval_good[1])
 f_num = eval(NonLinProbPrecompileNum.f_noeval_num[1])
-f_obj =  eval(NonLinProbPrecompileContraction.f_noeval_contraction) #eval(NonLinProbPrecompileObj.f_noeval_obj)
+f_obj =  eval(NonLinProbPrecompileContractionQuadUnif.f_noeval_contraction_quaduniform) #eval(NonLinProbPrecompileObj.f_noeval_obj)
+f_sump = eval(NonLinProbPrecompileSumpContraction.f_noeval_sump_contraction[1]) 
+f_pdf = eval(PrecompileExtpow.f_noeval_extpow_prod_pdf[1]) 
+
 Mp = M
 @variables z[1:Mp]
 p=[]
@@ -18,9 +27,17 @@ grad_num = generate_gradient(os)
 sys_num = generate_function(ns) 
 jac_num = generate_jacobian(ns, sparse=true)
 jac_sym = generate_jacobian(ns,z,p)
-hess_obj_num = generate_hessian(os, sparse=true)
-hess_obj_sym = calculate_hessian(os)
 hess_sym(i) = Symbolics.sparsehessian(f_expr[i],Symbolics.scalarize(z))
+
+f_sump_expr = f_sump(z,[]) 
+f_pdf_expr = f_pdf(z,[])
+grad_sump(i) = Symbolics.gradient(f_sump_expr[i],z)
+grad_pdf(i) = Symbolics.gradient(f_pdf_expr[i],z)
+hess_sump(i) = Symbolics.sparsehessian(f_sump_expr[i],Symbolics.scalarize(z))
+hess_pdf(i) = Symbolics.sparsehessian(f_pdf_expr[i],Symbolics.scalarize(z))
+hess_obj(i) = hess_sump(i)*f_pdf_expr[i] + grad_pdf(i)*transpose(grad_sump(i)) + grad_sump(i)*transpose(grad_pdf(i)) + hess_pdf(i)*f_sump_expr[i] 
+hess_obj_sym = sum(hess_obj(i)*weights0[i] for i=1:mini_batch) /2^N ;
+#hess_obj_sparsity = Symbolics.hessian_sparsity(os)
 
 on = @eval eval(obj_num)
 gn = @eval eval(grad_num[1])
@@ -59,7 +76,7 @@ jac_nzval_iip = @eval eval(jac_nzval_num[2])
 # @show jac_nzval0
 
 rows_jac_sp = jac_sp.rowval
-cols_jac_sp = vcat([fill(j,length(nzrange(jac_sp,j))) for j=1:Mp]...)
+cols_jac_sp = vcat([fill(j,length(nzrange(jac_sp,j))) for j=1:Mp]...);
 # @test sparse(rows_jac_sp,cols_jac_sp,true,Q,Mp)==jac_sp
 
 # sparsity pattern of the Lagrangian's hessian
@@ -73,21 +90,21 @@ lag =  σ * obj_expr + dot(f_expr,λvec)
 temp_sp = OptimizationSystem(lag,z,vcat(λvec...,σ))
 hess_sp = ModelingToolkit.hessian_sparsity(temp_sp)
 rows_hess_sp_full = hess_sp.rowval
-cols_hess_sp_full = vcat([fill(j,length(nzrange(hess_sp,j))) for j=1:Mp]...)
+cols_hess_sp_full = vcat([fill(j,length(nzrange(hess_sp,j))) for j=1:Mp]...);
 # @test sparse(rows_hess_sp_full,cols_hess_sp_full,true,Mp,Mp)==hess_sp
 
 hess_sp_lt = sparse(LowerTriangular(Array(hess_sp)))
 rows_hess_sp = hess_sp_lt.rowval
-cols_hess_sp = vcat([fill(j,length(nzrange(hess_sp_lt,j))) for j=1:Mp]...)
+cols_hess_sp = vcat([fill(j,length(nzrange(hess_sp_lt,j))) for j=1:Mp]...);
 # @test Symmetric(sparse(rows_hess_sp,cols_hess_sp,true,Mp,Mp),:L)==hess_sp
 
 ##
 @parameters λ[1:Q] σ
 λcat = vcat(λ...)
-hess_λ = σ * hess_obj_sym + sum(λ[i]*hess_sym(i) for i=1:Q) 
-hess_num = build_function(hess_λ,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
-hess_oop = @eval eval(hess_num[1])
-hess_iip = @eval eval(hess_num[2])
+hess_λ = σ * hess_obj_sym + sum(λ[i]*hess_sym(i) for i=1:Q);
+# hess_num = build_function(hess_λ,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
+# hess_oop = @eval eval(hess_num[1])
+# hess_iip = @eval eval(hess_num[2])
 # hess_z0 = spzeros(length(z0),length(z0)) 
 # λ0 = ones(Q)
 # σ0 = 1.0
@@ -96,10 +113,10 @@ hess_iip = @eval eval(hess_num[2])
 # @show hess_z0
 ##
 
-hess_λ_nzval = hess_λ[hess_sp_lt]
-hess_λ_nzval_num = build_function(hess_λ_nzval,z,λ,σ) # function (z, λ, σ) or function (var,z, λ, σ)
-hess_λ_nzval_oop = @eval eval(hess_λ_nzval_num[1])
-hess_λ_nzval_iip = @eval eval(hess_λ_nzval_num[2])
+hess_λ_nzval = hess_λ[hess_sp_lt];
+hess_λ_nzval_num = build_function(hess_λ_nzval,z,λ,σ); # function (z, λ, σ) or function (var,z, λ, σ)
+hess_λ_nzval_oop = @eval eval(hess_λ_nzval_num[1]);
+hess_λ_nzval_iip = @eval eval(hess_λ_nzval_num[2]); ## problem line
 # hess_λ_nzval0 = spzeros(nnz(hess_sp_lt)) 
 # λ0 = ones(Q)
 # σ0 = 1.0
@@ -108,9 +125,10 @@ hess_λ_nzval_iip = @eval eval(hess_λ_nzval_num[2])
 # @show hess_λ_nzval0
 
 hess_σ = σ * hess_obj_sym
-hess_σ_num = build_function(hess_σ,z,σ)
-hess_σ_oop = @eval eval(hess_σ_num[1])
-hess_σ_iip = @eval eval(hess_σ_num[2])
+hess_σ_num = build_function(hess_σ,z,σ)## problem line
+hess_σ_oop = @eval eval(hess_σ_num[1])## problem line
+hess_σ_iip = @eval eval(hess_σ_num[2])## problem line
+
 # hess_σ_z0 = spzeros(length(z0),length(z0)) 
 # σ0 = 1.0
 # hess_σ_oop(z0,σ0)
@@ -141,9 +159,9 @@ Hv_iip = @eval eval(Hv_num[2])
 # @test Array(Hv0)==Hv_oop(z0,λ0,v0,σ0)
 
 
-lagrangian_sym = σ * obj_expr + sum(λ[i]*f_expr[i] for i=1:Q) 
-lagrangian_num = build_function(lagrangian_sym,z,λ,σ) 
-lagrangian_oop = @eval eval(lagrangian_num)
+# lagrangian_sym = σ * obj_expr + sum(λ[i]*f_expr[i] for i=1:Q) 
+# lagrangian_num = build_function(lagrangian_sym,z,λ,σ) 
+# lagrangian_oop = @eval eval(lagrangian_num)
 # lagrangian0 = 0.0
 # lagrangian_oop(z0,λ0,σ0)
 

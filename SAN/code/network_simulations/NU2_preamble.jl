@@ -24,7 +24,8 @@ import Distributions
 include("NetworkType.jl"); using .NetworkType
 #include("IncBetaDer.jl"); #using .IncBetaDer
 include("NetDefs.jl"); using .NetDefs
-include("NonLinProbPrecompile.jl"); using .NonLinProbPrecompile; using .NonLinProbPrecompileNum; using .NonLinProbPrecompileContraction
+include("NonLinProbPrecompile.jl"); 
+using .PrecompileExtpow, .NonLinProbPrecompileSumpContraction, .NonLinProbPrecompileContractionQuadUnif, .NonLinProbPrecompileNum, .NonLinProbPrecompile
 include("ExtendedPowerDist.jl");
 
 

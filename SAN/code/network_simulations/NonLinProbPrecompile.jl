@@ -1,3 +1,4 @@
+
 module NonLinProbPrecompile
     include("NetDefs.jl"); using .NetDefs
     using ModelingToolkit, LinearAlgebra, RuntimeGeneratedFunctions
@@ -72,24 +73,64 @@ end #module
 # end #module
 
 
-module NonLinProbPrecompileContraction
+module NonLinProbPrecompileContractionQuadUnif
     #include("NetworkType.jl");using .NetworkType
     include("NetDefs.jl"); using .NetDefs
     using ModelingToolkit, LinearAlgebra, RuntimeGeneratedFunctions
-    export f_noeval_contraction
+    export f_noeval_contraction_quaduniform
     function system(; kwargs...)
         # Define some variables
         @variables z[1:M]
         zcat = vcat(z...);
         # Define a system of nonlinear equations
         p0A = Array(p0)
-        cont = obj_contraction_quaduniform(zcat, p0A, x0,weights0)  #obj_contraction(zcat, p0A, x0)  obj_contraction_uniform(zcat, p0A, x0) obj_contraction_quaduniform(zcat, p0A, x0,weights0)
+        cont = obj_contraction_quaduniform(zcat, p0A, x0,weights0)  
         opt = OptimizationSystem(cont,z,[])
         return generate_function(opt,z,[])
     end
     # Setting eval_expression=false and eval_module=[this module] will ensure
     # the RGFs are put into our own cache, initialised below.   
     RuntimeGeneratedFunctions.init(@__MODULE__)
-    const f_noeval_contraction = system(; eval_expression=false, eval_module=@__MODULE__)
+    const f_noeval_contraction_quaduniform = system(; eval_expression=false, eval_module=@__MODULE__)
 end #module
 
+module NonLinProbPrecompileSumpContraction
+    #include("NetworkType.jl");using .NetworkType
+    include("NetDefs.jl"); using .NetDefs
+    using ModelingToolkit, LinearAlgebra, RuntimeGeneratedFunctions
+    export f_noeval_sump_contraction
+    function system(; kwargs...)
+        # Define some variables
+        @variables z[1:M]
+        zcat = vcat(z...);
+        # Define a system of nonlinear equations
+        p0A = Array(p0)
+        cont = sump_contraction(zcat, p0A, x0)
+        opt = OptimizationSystem(cont,z,[])
+        return generate_function(opt,z,[])
+    end
+    # Setting eval_expression=false and eval_module=[this module] will ensure
+    # the RGFs are put into our own cache, initialised below.   
+    RuntimeGeneratedFunctions.init(@__MODULE__)
+    const f_noeval_sump_contraction = system(; eval_expression=false, eval_module=@__MODULE__)
+end #module
+
+module PrecompileExtpow
+    #include("NetworkType.jl");using .NetworkType
+    include("NetDefs.jl"); using .NetDefs
+    using ModelingToolkit, LinearAlgebra, RuntimeGeneratedFunctions
+    export f_noeval_extpow_prod_pdf
+    function system(; kwargs...)
+        # Define some variables
+        @variables z[1:M]
+        zcat = vcat(z...);
+        # Define a system of nonlinear equations
+        cont = extpow_prod_pdf(x0,zcat) 
+        opt = OptimizationSystem(cont,z,[])
+        return generate_function(opt,z,[])
+    end
+    # Setting eval_expression=false and eval_module=[this module] will ensure
+    # the RGFs are put into our own cache, initialised below.   
+    RuntimeGeneratedFunctions.init(@__MODULE__)
+    const f_noeval_extpow_prod_pdf = system(; eval_expression=false, eval_module=@__MODULE__)
+end #module

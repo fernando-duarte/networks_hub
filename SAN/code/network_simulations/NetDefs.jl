@@ -15,7 +15,7 @@ using Flux.Data: DataLoader
 using IterTools: ncycle
 using Flux: throttle
 
-export T, N, M, P, p0, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, contraction, p_contraction, obj_contraction, obj_contraction_uniform, mini_batch, obj_contraction_quaduniform, weights0
+export T, N, M, P, p0, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, contraction, p_contraction, obj_contraction, obj_contraction_uniform, mini_batch, obj_contraction_quaduniform, weights0, sump_contraction, extpow_prod_pdf
 
 
 #=
@@ -95,7 +95,7 @@ end
 # zᵀHz = 0
 function c_quad(z,p)
     H  = reshape(p[6N+2+2N*M:6N+1+2N*M+M^2],M,M)
-    return dot(z,H*z) #transpose(z)*H*z
+    return dot(z,H*z) # try dot(z, H, z) #transpose(z)*H*z
 end
 
 ## chance constraints ⟺ c_chance(z)=0
@@ -123,6 +123,18 @@ end
 #     return reshape( min.( (1+γ)*(Aᵀ*p_clear + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep) ,N*mb)
 # end
 
+function p_contraction(z,p,x)
+    mb = size(x,2)
+    c, Aᵀ = selc*z, transpose(reshape(selA*z,N,N))
+    p_bar, γ = p[N+1:2N], p[3N+1]
+    p_bar_rep = repeat(p_bar,1,mb)
+    c_rep = repeat(c,1,mb)
+    p1 = min.( (1+γ)*(Aᵀ*p_bar_rep + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
+    p2 = min.( (1+γ)*(Aᵀ*p1        + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
+    #p_n = min.( (1+γ)*(Aᵀ*p_{n-1} + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
+    return p2
+end
+
 function sump_contraction(z,p,x)
     mb = size(x,2)
     c, Aᵀ = selc*z, transpose(reshape(selA*z,N,N))
@@ -134,6 +146,7 @@ function sump_contraction(z,p,x)
     #p_n = min.( (1+γ)*(Aᵀ*p_{n-1} + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
     return sum(p2,dims=1)
 end
+
 
 # function c_p(z,p,x)
 #     #mb = size(x,2)
@@ -206,6 +219,10 @@ function extpow_prod_pdf(x,a,b)
     prod(ExtendedPowerDist.density.(ExtendedPowerDist.ExtPow.(a,b),x),dims=1)
 end
 
+function extpow_prod_pdf(x,z)
+    α, β = selα*z, selβ*z
+    prod(ExtendedPowerDist.density.(ExtendedPowerDist.ExtPow.(α, β),x),dims=1)
+end
 
 function obj_contraction_uniform(z,p,x)
     # x drawn from uniform distribution
