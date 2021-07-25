@@ -1,17 +1,13 @@
 module NetworkType
 
-using Convex, SCS, NLsolve
-using LinearAlgebra, Distributions, Random, SpecialFunctions,  SparseArrays, MeasureTheory
-using BenchmarkTools, Test
-using DataFrames, BSON, XLSX, JLD2, Missings
+using NLsolve
+using LinearAlgebra, Distributions, SpecialFunctions,  SparseArrays, MeasureTheory
+using DataFrames, BSON, XLSX, Missings
 using Dates, MonthlyDates
-using Plots, Gadfly, Cairo, Fontconfig, LightGraphs, SimpleWeightedGraphs, GraphRecipes
-using Setfield, Parameters, Suppressor
-using MathOptInterface
-const MOI = MathOptInterface
+using Parameters
 include("IncBetaDer.jl")
 
-export Network, netEmp, plot, constrA, solve_constrA, constrβ, solve_constrβ, roundNet
+export Network, netEmp, toJuliaDates
 
 # α=2.0; β=3.0;
 # m= MeasureTheory.Beta(α, β)
@@ -27,7 +23,7 @@ export Network, netEmp, plot, constrA, solve_constrA, constrβ, solve_constrβ, 
     nm_b::Vector{Int64} = Int64[]
     nm_c::Vector{Int64} = Int64[]
     γ::T = T(0)
-    dist::Product{Continuous} = Product(Distributions.Beta.(ones(NN),Inf)) # Distributions.jl only works with Float64 -- α==1.0 and β==Inf is consistent with delta.==0
+    dist::Distributions.Product{Continuous} = Distributions.Product(Distributions.Beta.(ones(NN),Inf)) # Distributions.jl only works with Float64 -- α==1.0 and β==Inf is consistent with delta.==0
     date::TimeType = today()
     name::Vector{String} = ["North-west node","Nort-east node","Central Node","South-east node","South-west node"]
     name_short::Vector{String} = ["NW","NE","CTR","SE","SW"]
@@ -68,12 +64,13 @@ function netEmp(df::DataFrame,
         delta = [deepcopy(Array{T}(df_t[1:N,[:delta]]))...] 
                
         # create A consistent with rest of network
-        if isnothing(A)
-            a = w .+ p_bar; # total assets  
-            mat_ind = randIndA(N) # random edges
-            A = zeros(T,N,N)
-            A[mat_ind] .= solve_constrA(mat_ind,b,p_bar,c,a)
-        end
+        A = zeros(T,N,N)
+#         if isnothing(A)
+#             a = w .+ p_bar; # total assets  
+#             mat_ind = randIndA(N) # random edges
+#             A = zeros(T,N,N)
+#             A[mat_ind] .= solve_constrA(mat_ind,b,p_bar,c,a)
+#         end
 
         # make α,β parameters of the beta distribution consistent with prob of default
         if isnothing(dist)
@@ -120,6 +117,54 @@ function netEmp(fileName::String,N::Integer;
         data[:,:delta] .= any(names(data).=="delta") ? data[!,:delta] : zeros(T,size(data,1))
         netEmp(data,N;T=T,dates=dates,γ=γ)          
 end
+
+## utility
+function toJuliaDates(stata_tq::Vector{T}) where T
+    if T==Date
+        return stata_tq        
+    else T==Int
+        # convert stata %tq date format into Julia type QuarterlyDate <: TimeType
+        EPOCH = Dates.Date(1960, 1, 1)
+        elapsed_quarters(Δ::Integer) = EPOCH + Dates.Quarter(Δ)
+        stata_quarters_to_date(q::Integer) = lastdayofquarter(elapsed_quarters(q))        
+        return stata_quarters_to_date.(stata_tq)
+    end
+    return nothing        
+end
+     
+function constrA(x::Array{T},mat_ind::Vector{Int},b::Vector{R},p_bar::Vector{R},c::Vector{R},a::Vector{R}) where {T<:Real,R<:Real}
+    N = length(p_bar);
+    A = zeros(T,N,N); 
+    A[mat_ind] .= x
+    return vcat(b - p_bar + diagm(p_bar)*A*ones(N), c - a + transpose(A)*p_bar)
+end
+
+function solve_constrA(mat_ind::Vector{Int},b::Vector{R},p_bar::Vector{R},c::Vector{R},a::Vector{R}) where {R<:Real}
+  constrA_x = (x) -> constrA(x,mat_ind,b,p_bar,c,a) # this creates a new function of one variable (x) which "closes over" the current values of `mat_ind,b,p_bar,c,a`
+  x0 = ones(length(mat_ind))
+  nlsolve(constrA_x,x0,autodiff = :forward).zero
+end
+
+function constrβ(β::Array{T},α::Vector{R},w::Vector{R},c::Vector{R},delta::Vector{R}) where {T<:Real,R<:Real}
+    # cdf(Beta) only accepts Float64
+   #1 .- cdf.(Beta.(α,β),w ./ c) .- delta
+   beta_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x)
+   beta_ccdf.(α,β,w ./ c) .- delta     
+end
+
+function solve_constrβ(α::Vector{R},w::Vector{R},c::Vector{R},delta::Vector{R}) where {R<:Real}
+  constrβ_x = (x) -> constrβ(x,α,w,c,delta)
+  β0 = fill(30.0,length(α))
+  nlsolve(constrβ_x,β0,autodiff = :forward).zero
+end
+
+
+
+#=
+
+using Plots, Gadfly, Cairo, Fontconfig, LightGraphs, SimpleWeightedGraphs, GraphRecipes
+using Random
+export roundNet,plot
 
 ## plot recipe
 function plot(network::Network;plot_outside::Bool=false)
@@ -175,71 +220,6 @@ function plot(network::Network;plot_outside::Bool=false)
     # method `:spectral`, `:sfdp`, `:circular`, `:shell`, `:stress`, `:spring`, `:tree`, `:buchheim`, `:arcdiagram` or `:chorddiagram`.
     end
 end    
-    
-## utility
-function toJuliaDates(stata_tq::Vector{T}) where T
-    if T==Date
-        return stata_tq        
-    else T==Int
-        # convert stata %tq date format into Julia type QuarterlyDate <: TimeType
-        EPOCH = Dates.Date(1960, 1, 1)
-        elapsed_quarters(Δ::Integer) = EPOCH + Dates.Quarter(Δ)
-        stata_quarters_to_date(q::Integer) = lastdayofquarter(elapsed_quarters(q))        
-        return stata_quarters_to_date.(stata_tq)
-    end
-    return nothing        
-end
-
-
-      
-function constrA(x::Array{T},mat_ind::Vector{Int},b::Vector{R},p_bar::Vector{R},c::Vector{R},a::Vector{R}) where {T<:Real,R<:Real}
-    N = length(p_bar);
-    A = zeros(T,N,N); 
-    A[mat_ind] .= x
-    return vcat(b - p_bar + diagm(p_bar)*A*ones(N), c - a + transpose(A)*p_bar)
-end
-
-function solve_constrA(mat_ind::Vector{Int},b::Vector{R},p_bar::Vector{R},c::Vector{R},a::Vector{R}) where {R<:Real}
-  constrA_x = (x) -> constrA(x,mat_ind,b,p_bar,c,a) # this creates a new function of one variable (x) which "closes over" the current values of `mat_ind,b,p_bar,c,a`
-  x0 = ones(length(mat_ind))
-  nlsolve(constrA_x,x0,autodiff = :forward).zero
-end
-
-function constrβ(β::Array{T},α::Vector{R},w::Vector{R},c::Vector{R},delta::Vector{R}) where {T<:Real,R<:Real}
-    # cdf(Beta) only accepts Float64
-   #1 .- cdf.(Beta.(α,β),w ./ c) .- delta
-   beta_ccdf(a,b,x) = zero(x) < x < one(x) ? one(x) - IncBetaDer.beta_inc_grad(a, b, x)[1] : zero(x)
-   beta_ccdf.(α,β,w ./ c) .- delta     
-end
-
-function solve_constrβ(α::Vector{R},w::Vector{R},c::Vector{R},delta::Vector{R}) where {R<:Real}
-  constrβ_x = (x) -> constrβ(x,α,w,c,delta)
-  β0 = fill(30.0,length(α))
-  nlsolve(constrβ_x,β0,autodiff = :forward).zero
-end
-
-function roundNet(net::Network)
-    # rounds numbers inside properties of net
-    pn = propertynames(net)
-    reals_ind = ([eltype(getproperty(net,p)) for p in pn] .<: Real)
-    reals_name = pn[reals_ind]
-    reals_name = reals_name[findall(x->x!=:dist,reals_name)]
-    reals_val = [round.(getproperty(net,p),digits=2) for p in reals_name if p!=:dist]
-    notreals_names = vcat(setdiff(pn,reals_name),:dist)
-    noreals_val = [getproperty(net,p) for p in notreals_names]
-    nm = vcat(reals_name...,notreals_names)
-    val = vcat(reals_val,noreals_val)
-    function copy_with_modification(original::T, field_to_change, new_value) where {T}
-        val(field) = field==field_to_change ? new_value : getfield(original, field)
-        T(val.(fieldnames(T))...)
-    end
-    for p in zip(nm,val)
-        net = copy_with_modification(net,p[1],p[2])
-    end
-    return net
-end
-
-
 
 
 ##############################################################################################
@@ -405,5 +385,28 @@ function trainingSetA(net; sample_size::Integer = 20, max_iter::Integer = 2000, 
     end
 end
 
+function roundNet(net::Network)
+    # rounds numbers inside properties of net
+    pn = propertynames(net)
+    reals_ind = ([eltype(getproperty(net,p)) for p in pn] .<: Real)
+    reals_name = pn[reals_ind]
+    reals_name = reals_name[findall(x->x!=:dist,reals_name)]
+    reals_val = [round.(getproperty(net,p),digits=2) for p in reals_name if p!=:dist]
+    notreals_names = vcat(setdiff(pn,reals_name),:dist)
+    noreals_val = [getproperty(net,p) for p in notreals_names]
+    nm = vcat(reals_name...,notreals_names)
+    val = vcat(reals_val,noreals_val)
+    function copy_with_modification(original::T, field_to_change, new_value) where {T}
+        val(field) = field==field_to_change ? new_value : getfield(original, field)
+        T(val.(fieldnames(T))...)
+    end
+    for p in zip(nm,val)
+        net = copy_with_modification(net,p[1],p[2])
+    end
+    return net
+end
+
+
+=#
 
 end #module

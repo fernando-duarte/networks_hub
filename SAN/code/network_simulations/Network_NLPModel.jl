@@ -2,7 +2,7 @@
 
 # module NetworkModel
 
-using NLPModels
+using NLPModels, SparseArrays
 
 # export NetNLP
 
@@ -36,8 +36,8 @@ end
 function NetNLP(z0,low,upp,Q,jac_sp,rows_jac_sp,cols_jac_sp,hess_sp,rows_hess_sp,cols_hess_sp,N; minimize = true,name = "Network Optimization",p=[])
   meta = NLPModelMeta(M; 
             x0 = z0,
-            lvar = low,
-            uvar = upp,
+            lvar = typeof(z0) <: SparseVector ? sparse(low) : Array(low),
+            uvar = typeof(z0) <: SparseVector ? sparse(upp) : Array(upp),
 #             nlvb: number of nonlinear variables in both objectives and constraints
 #             nlvo: number of nonlinear variables in objectives (includes nlvb)
 #             nlvc: number of nonlinear variables in constraints (includes nlvb)
@@ -48,9 +48,9 @@ function NetNLP(z0,low,upp,Q,jac_sp,rows_jac_sp,cols_jac_sp,hess_sp,rows_hess_sp
             nlvoi = 0,
             nwv = 0,
             ncon = Q,
-#             y0: initial Lagrange multipliers
-            lcon = zeros(Q),#zeros(ncon),
-            ucon = zeros(Q),#zeros(ncon),
+            #y0 = typeof(z0) <: SparseVector ? spzeros(Q) : zeros(Q),
+            lcon = typeof(z0) <: SparseVector ? spzeros(Q) : zeros(Q),
+            ucon = typeof(z0) <: SparseVector ? spzeros(Q) : zeros(Q),
             #nnzo: number of nonzeros in all objectives gradients
             nnzj= nnz(jac_sp),
             nnzh = nnz(hess_sp),

@@ -4,5 +4,6 @@ print_level 0
 max_iter 10000
 mu_strategy adaptive
 derivative_test second-order
+# hessian_approximation limited-memory
 hessian_approximation exact
 constr_viol_tol 1e-14
