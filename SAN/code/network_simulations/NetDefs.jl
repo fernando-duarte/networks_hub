@@ -10,7 +10,7 @@ using Flux, BSON
 using BSON: @load, @save
 using Flux.Data: DataLoader;using IterTools: ncycle;using Flux: throttle
 
-export T, N, M, P, p0, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, contraction, p_contraction, obj_contraction, obj_contraction_uniform, mini_batch, obj_contraction_quaduniform, weights0, sump_contraction, extpow_prod_pdf
+export T, N, M, P, p0, z0, x0, c_lin,c_quad,c_chance, c_p, low, upp, cL, uL, contraction, p_contraction, obj_contraction, obj_contraction_uniform, mini_batch, obj_contraction_quaduniform, weights0, sump_contraction, extpow_prod_pdf, selA, selb, selc, selα, selβ
 
 ## instantiate
 T=Float64
@@ -135,10 +135,10 @@ function sump_contraction(z,p,x)
     p_bar_rep = repeat(p_bar,1,mb)
     c_rep = repeat(c,1,mb)
     p1 = min.( (1+γ)*(Aᵀ*p_bar_rep + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
-    #p2 = min.( (1+γ)*(Aᵀ*p1        + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
-    #p3 = min.( (1+γ)*(Aᵀ*p2        + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
+    p2 = min.( (1+γ)*(Aᵀ*p1        + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
+    p3 = min.( (1+γ)*(Aᵀ*p2        + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
     #p_n = min.( (1+γ)*(Aᵀ*p_{n-1} + (1 .- x).*c_rep) - γ*p_bar_rep, p_bar_rep)
-    return sum(p1,dims=1)
+    return sum(p3,dims=1)
 end
 
 
@@ -157,13 +157,13 @@ function p_contraction(z, p, x, n::Integer)
     n <= 0 ? p_bar_rep : contraction(vcat(znop,p_contraction(z,p,x,n-1)),p,x)
 end
 
-function p_nlsolve(z,p,x)
-    mb = size(x,2)
-    p_bar = p[N+1:2N]
-    p_bar_rep = repeat(p_bar,mb)
-    znop = z[1:N^2+4N]
-    nlsolve(p_clear -> c_p(vcat(znop,p_clear),p,x),p_bar_rep).zero
-end
+# function p_nlsolve(z,p,x)
+#     mb = size(x,2)
+#     p_bar = p[N+1:2N]
+#     p_bar_rep = repeat(p_bar,mb)
+#     znop = z[1:N^2+4N]
+#     nlsolve(p_clear -> c_p(vcat(znop,p_clear),p,x),p_bar_rep).zero
+# end
 
 function _c(z,p,x)
     vcat(
